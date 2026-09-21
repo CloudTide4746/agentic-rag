@@ -1,0 +1,25 @@
+# JavaScript build and test output
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+
+# Go build output
+bin/
+
+# Python runtime output and local data
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+backend/data/
+
+# Local configuration and diagnostics. Keep documented templates trackable.
+.env
+.env.*
+!.env.example
+*.log
+
+# Historical material is deliberately local-only.
+archive/

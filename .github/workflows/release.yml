@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release (for example v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.20.0'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - name: Build web bundle
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run build
+          tar -C dist -czf ../../agentic-rag-web.tar.gz .
+      - name: Build Linux API binaries
+        working-directory: apps/api
+        run: |
+          mkdir -p ../../release
+          go build -trimpath -ldflags='-s -w' -o ../../release/agentic-rag-api ./cmd/api
+          go build -trimpath -ldflags='-s -w' -o ../../release/agentic-rag-worker ./cmd/worker
+          tar -C ../../release -czf ../../agentic-rag-api-linux-amd64.tar.gz agentic-rag-api agentic-rag-worker
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            agentic-rag-web.tar.gz
+            agentic-rag-api-linux-amd64.tar.gz
+          if-no-files-found: error
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: release
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release/* --generate-notes
+          fi

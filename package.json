@@ -1,0 +1,20 @@
+{
+  "name": "agentic-rag",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workspace commands for the Agentic RAG monorepo.",
+  "scripts": {
+    "web:typecheck": "npm --prefix apps/web run typecheck",
+    "web:test": "npm --prefix apps/web test",
+    "web:build": "npm --prefix apps/web run build",
+    "web:test:e2e": "npm --prefix apps/web run test:e2e",
+    "api:test": "cd apps/api && go test ./...",
+    "api:vet": "cd apps/api && go vet ./...",
+    "api:build": "cd apps/api && go build ./cmd/api ./cmd/worker",
+    "agent:check": "python -m compileall -q backend/app backend/scripts",
+    "check": "npm run web:typecheck && npm run web:test && npm run web:build && npm run api:test && npm run api:vet && npm run api:build && npm run agent:check"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: Agentic RAG Platform API
+  version: 0.1.0
+  description: 工程基线，仅健康检查已经实现。业务接口开发前补全契约与权限要求。
+servers:
+  - url: /api/v1
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      description: 无需认证。仅说明 HTTP 服务存活，不代表业务依赖可用。
+      responses:
+        '200':
+          description: API 存活
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, request_id]
+                properties:
+                  request_id: {type: string}
+                  data:
+                    type: object
+                    required: [status, service]
+                    properties:
+                      status: {type: string, enum: [ok]}
+                      service: {type: string, enum: [api]}
+  /health/ready:
+    get:
+      operationId: getReadiness
+      description: 无需认证。当前未接入业务依赖，固定返回 503。
+      responses:
+        '503':
+          description: 业务依赖未接入
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, request_id]
+      properties:
+        request_id: {type: string}
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string}
+            message: {type: string}
