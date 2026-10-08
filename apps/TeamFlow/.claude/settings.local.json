@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)",
+      "Bash(grep -E \"^\\(using-superpowers|using-git|code-review|simplify|verify|run|test|debug|dispatching|executing|subagent|writing|smart-handoff|handoff|requesting-code|finishing|fullstack|teach|qa|review|backend\\)$\")",
+      "Bash(xargs -I{} basename {})",
+      "Read(//c/Users/31338/.agents/skills/writing-plans/**)",
+      "Read(//c/Users/31338/.agents/skills/subagent-driven-development/**)",
+      "Read(//c/Users/31338/.agents/skills/qa/**)",
+      "Bash(powershell -NoProfile -Command \"\nAdd-Type -AssemblyName System.Windows.Forms\nAdd-Type -AssemblyName System.Drawing\n\\\\$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds\n\\\\$bmp = New-Object System.Drawing.Bitmap \\\\$bounds.Width, \\\\$bounds.Height\n\\\\$g = [System.Drawing.Graphics]::FromImage\\(\\\\$bmp\\)\n\\\\$g.CopyFromScreen\\(\\\\$bounds.Location, [System.Drawing.Point]::Empty, \\\\$bounds.Size\\)\n\\\\$out = 'E:\\\\Backend\\\\Go\\\\New_to_Go\\\\Middle_Project\\\\docs\\\\showcase\\\\preview-fullpage.png'\n\\\\$bmp.Save\\(\\\\$out, [System.Drawing.Imaging.ImageFormat]::Png\\)\n\\\\$g.Dispose\\(\\); \\\\$bmp.Dispose\\(\\)\nWrite-Host 'Screenshot saved:' \\\\$out\nWrite-Host 'Size:' \\(Get-Item \\\\$out\\).Length 'bytes'\n\" 2>&1)",
+      "Read(//c/Go/**)",
+      "Read(//c/Program Files/Go/**)",
+      "Read(//c/Users/PC/go/bin/**)",
+      "Bash(go version *)",
+      "Bash(cmd //c \"dir C:\\\\\\\\go 2>nul & where go 2>nul & dir C:\\\\\\\\Users\\\\\\\\PC\\\\\\\\sdk 2>nul\")",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(echo \"--- EXIT: $? ---\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "Bash(git ls-tree *)",
+      "Bash(go test *)"
+    ]
+  }
+}

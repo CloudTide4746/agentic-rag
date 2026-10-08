@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="TeamFlow 团队项目与任务协作工作台">
+  <title>TeamFlow · 协作工作台</title>
+  <style>
+    :root {
+      --ink: oklch(23% .025 248);
+      --ink-soft: oklch(38% .025 248);
+      --muted: oklch(53% .025 248);
+      --paper: oklch(97% .012 88);
+      --paper-deep: oklch(93% .018 88);
+      --line: oklch(82% .025 88);
+      --accent: oklch(58% .17 38);
+      --accent-deep: oklch(43% .14 38);
+      --green: oklch(52% .12 155);
+      --blue: oklch(51% .11 245);
+      --amber: oklch(66% .14 79);
+      --danger: oklch(52% .18 25);
+      --sidebar: 284px;
+      --shadow: 0 22px 55px oklch(22% .025 248 / .12);
+      --sans: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      --display: Georgia, "Songti SC", serif;
+      --mono: "Cascadia Code", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        repeating-linear-gradient(0deg, transparent 0 31px, oklch(86% .018 248 / .23) 32px 33px),
+        var(--paper);
+      font-family: var(--sans);
+    }
+    body::before {
+      position: fixed;
+      inset: 0 auto 0 44px;
+      width: 1px;
+      z-index: -1;
+      background: oklch(72% .11 38 / .42);
+      content: "";
+    }
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+      outline: 3px solid color-mix(in oklch, var(--accent), transparent 65%);
+      outline-offset: 2px;
+    }
+    [hidden] { display: none !important; }
+
+    .auth {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 1.12fr) minmax(360px, .88fr);
+    }
+    .auth-story {
+      min-height: 100vh;
+      padding: clamp(42px, 7vw, 100px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--paper);
+      background: var(--ink);
+    }
+    .brand { display: flex; align-items: center; gap: 13px; letter-spacing: .08em; }
+    .brand-mark {
+      width: 39px; height: 39px; display: grid; place-items: center;
+      color: var(--ink); background: var(--paper); border-radius: 50%;
+      font-family: var(--display); font-weight: 700;
+    }
+    .story-copy { max-width: 750px; }
+    .kicker {
+      margin: 0 0 18px; color: var(--accent); font-size: 12px;
+      font-weight: 800; letter-spacing: .24em; text-transform: uppercase;
+    }
+    .story-copy h1 {
+      margin: 0; font-family: var(--display); font-size: clamp(52px, 8vw, 112px);
+      font-weight: 400; letter-spacing: -.065em; line-height: .88;
+    }
+    .story-copy p {
+      max-width: 570px; margin: 34px 0 0; color: oklch(82% .02 248);
+      font-size: clamp(16px, 2vw, 20px); line-height: 1.8;
+    }
+    .auth-foot { color: oklch(68% .025 248); font-size: 12px; letter-spacing: .08em; }
+    .auth-panel {
+      min-height: 100vh; padding: clamp(38px, 7vw, 100px);
+      display: grid; place-items: center;
+    }
+    .auth-card { width: min(440px, 100%); }
+    .auth-card h2 {
+      margin: 20px 0 8px; font-family: var(--display);
+      font-size: clamp(38px, 5vw, 58px); font-weight: 400; letter-spacing: -.04em;
+    }
+    .auth-card > p { margin: 0 0 34px; color: var(--muted); line-height: 1.7; }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    .auth-tab {
+      flex: 1; padding: 14px 4px; border: 0; border-bottom: 3px solid transparent;
+      background: transparent; color: var(--muted); cursor: pointer;
+    }
+    .auth-tab.active { border-color: var(--accent); color: var(--ink); font-weight: 700; }
+
+    .app { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; padding: 30px 22px;
+      display: flex; flex-direction: column; color: var(--paper); background: var(--ink);
+      overflow: auto;
+    }
+    .sidebar .brand { margin: 0 7px 38px; }
+    .nav-label {
+      margin: 24px 10px 7px; color: oklch(65% .025 248);
+      font-size: 10px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase;
+    }
+    .nav-button, .entity-button {
+      width: 100%; border: 0; background: transparent; cursor: pointer; text-align: left;
+      transition: transform .18s ease, background .18s ease, color .18s ease;
+    }
+    .nav-button {
+      padding: 12px 13px; display: flex; align-items: center; gap: 11px;
+      border-radius: 3px; color: oklch(83% .018 88);
+    }
+    .nav-button:hover, .nav-button.active { color: var(--ink); background: var(--paper); transform: translateX(3px); }
+    .nav-button svg { width: 17px; height: 17px; }
+    .entity-list { display: grid; gap: 3px; }
+    .entity-button {
+      padding: 10px 12px; display: grid; grid-template-columns: 25px minmax(0,1fr);
+      gap: 8px; align-items: center; border-radius: 3px; color: oklch(78% .018 88);
+    }
+    .entity-button:hover, .entity-button.active { color: var(--paper); background: oklch(31% .025 248); }
+    .entity-index {
+      width: 24px; height: 24px; display: grid; place-items: center;
+      border: 1px solid oklch(48% .025 248); border-radius: 50%;
+      font-family: var(--display); font-size: 12px;
+    }
+    .entity-button span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-user {
+      margin-top: auto; padding: 22px 7px 0; border-top: 1px solid oklch(37% .025 248);
+      display: grid; grid-template-columns: 36px minmax(0,1fr) auto; gap: 10px; align-items: center;
+    }
+    .avatar {
+      width: 36px; height: 36px; display: grid; place-items: center; overflow: hidden;
+      border-radius: 50%; color: var(--ink); background: var(--paper-deep); font-weight: 800;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .sidebar-user strong, .sidebar-user small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-user small { margin-top: 3px; color: oklch(65% .025 248); font-size: 11px; }
+
+    .content { min-width: 0; padding: clamp(25px, 5vw, 72px); }
+    .topbar { min-height: 48px; margin-bottom: clamp(35px, 6vw, 72px); display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+    .breadcrumb { color: var(--muted); font-size: 13px; }
+    .breadcrumb strong { color: var(--ink); }
+    .top-actions { display: flex; gap: 8px; }
+    .page-head {
+      margin-bottom: 38px; display: grid; grid-template-columns: minmax(0,1fr) auto;
+      gap: 28px; align-items: end;
+    }
+    .page-head h1 {
+      margin: 0; max-width: 850px; font-family: var(--display);
+      font-size: clamp(45px, 7vw, 88px); font-weight: 400; letter-spacing: -.06em; line-height: .93;
+      overflow-wrap: anywhere;
+    }
+    .page-head p { max-width: 650px; margin: 18px 0 0; color: var(--muted); line-height: 1.75; }
+    .head-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; }
+
+    .button {
+      min-height: 42px; padding: 0 16px; border: 1px solid var(--ink);
+      border-radius: 3px; background: transparent; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .button:hover { transform: translateY(-2px); box-shadow: 4px 4px 0 var(--line); }
+    .button.primary { color: var(--paper); background: var(--ink); }
+    .button.accent { color: var(--paper); border-color: var(--accent-deep); background: var(--accent-deep); }
+    .button.danger { color: var(--danger); border-color: color-mix(in oklch, var(--danger), transparent 35%); }
+    .button.ghost { min-height: 34px; padding: 0 10px; border-color: transparent; color: var(--muted); }
+    .button.small { min-height: 34px; padding: 0 11px; font-size: 12px; }
+    .button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .icon-button {
+      width: 34px; height: 34px; padding: 0; display: grid; place-items: center;
+      border: 0; border-radius: 50%; color: inherit; background: transparent; cursor: pointer;
+    }
+    .icon-button:hover { background: color-mix(in oklch, currentColor, transparent 88%); }
+    .icon-button svg { width: 17px; height: 17px; }
+
+    .metrics {
+      margin-bottom: 45px; display: grid; grid-template-columns: repeat(5, 1fr);
+      border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line);
+    }
+    .metric { padding: 23px 18px 22px 0; }
+    .metric + .metric { padding-left: 18px; border-left: 1px solid var(--line); }
+    .metric strong { display: block; font-family: var(--display); font-size: clamp(30px, 4vw, 52px); font-weight: 400; line-height: 1; }
+    .metric span { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; letter-spacing: .08em; }
+
+    .section-head { margin: 36px 0 16px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    .section-head h2 { margin: 0; font-family: var(--display); font-size: 27px; font-weight: 400; }
+    .section-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .team-grid, .project-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .entity-card {
+      min-height: 235px; padding: 26px; display: flex; flex-direction: column;
+      border: 0; color: var(--ink); background: var(--paper); text-align: left; cursor: pointer;
+      transition: background .2s ease;
+    }
+    .entity-card:hover { background: color-mix(in oklch, var(--paper), var(--accent) 5%); }
+    .card-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .entity-card h3 { margin: 35px 0 9px; font-family: var(--display); font-size: 28px; font-weight: 400; line-height: 1.1; }
+    .entity-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .card-foot { margin-top: auto; padding-top: 24px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+    .arrow { font-family: var(--display); font-size: 21px; }
+
+    .toolbar {
+      margin-bottom: 18px; padding: 12px 0; display: flex; flex-wrap: wrap;
+      gap: 10px; align-items: center; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    }
+    .toolbar .field-inline { display: flex; align-items: center; gap: 8px; }
+    .toolbar label { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .toolbar select { min-height: 36px; padding: 0 30px 0 9px; }
+    .toolbar .spacer { flex: 1; }
+    .board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 15px; }
+    .board-column { min-width: 220px; }
+    .column-head { padding: 13px 2px; display: flex; justify-content: space-between; border-top: 3px solid var(--ink); }
+    .column-head h3 { margin: 0; font-size: 13px; letter-spacing: .08em; }
+    .column-head span { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .task-list { display: grid; gap: 8px; }
+    .task-card {
+      padding: 17px; border: 1px solid var(--line); border-radius: 3px;
+      background: color-mix(in oklch, var(--paper), white 22%); cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease;
+    }
+    .task-card:hover { transform: translateY(-2px); border-color: var(--ink-soft); }
+    .task-card.overdue { border-color: color-mix(in oklch, var(--danger), transparent 38%); }
+    .task-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .priority { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+    .priority.high { background: var(--danger); } .priority.medium { background: var(--amber); } .priority.low { background: var(--green); }
+    .task-id { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+    .task-card h4 { margin: 15px 0 8px; font-size: 14px; line-height: 1.5; }
+    .task-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .task-bottom { margin-top: 18px; display: flex; justify-content: space-between; gap: 9px; color: var(--muted); font-size: 10px; }
+    .task-assignee { display: flex; align-items: center; gap: 6px; }
+    .mini-avatar { width: 21px; height: 21px; display: grid; place-items: center; border-radius: 50%; background: var(--paper-deep); font-size: 9px; font-weight: 800; }
+
+    .detail-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(290px, .75fr); gap: clamp(28px, 5vw, 70px); }
+    .detail-copy { padding-top: 26px; border-top: 2px solid var(--ink); }
+    .detail-copy h2 { margin: 0 0 13px; font-family: var(--display); font-size: 32px; font-weight: 400; }
+    .detail-copy p { color: var(--muted); line-height: 1.8; white-space: pre-wrap; }
+    .facts { margin: 0; }
+    .fact { padding: 15px 0; display: grid; grid-template-columns: 120px minmax(0,1fr); border-bottom: 1px solid var(--line); }
+    .fact dt { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .fact dd { margin: 0; font-size: 13px; }
+    .member-list { border-top: 1px solid var(--line); }
+    .member-row { padding: 14px 0; display: grid; grid-template-columns: 39px minmax(0,1fr) auto; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); }
+    .member-row strong, .member-row small { display: block; }
+    .member-row small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .badge {
+      display: inline-flex; min-height: 25px; padding: 0 8px; align-items: center;
+      border: 1px solid var(--line); border-radius: 99px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .05em;
+    }
+    .badge.active, .badge.done { color: var(--green); border-color: color-mix(in oklch, var(--green), transparent 55%); }
+    .badge.archived { color: var(--muted); }
+
+    .drawer {
+      position: fixed; inset: 0; z-index: 20; display: grid; grid-template-columns: minmax(0,1fr) minmax(340px, 580px);
+      pointer-events: none; visibility: hidden;
+    }
+    .drawer.open { pointer-events: auto; visibility: visible; }
+    .drawer-scrim { background: oklch(18% .025 248 / .42); opacity: 0; transition: opacity .25s ease; }
+    .drawer.open .drawer-scrim { opacity: 1; }
+    .drawer-panel {
+      height: 100vh; padding: clamp(26px, 5vw, 58px); overflow: auto; background: var(--paper);
+      transform: translateX(100%); transition: transform .32s cubic-bezier(.22,1,.36,1); box-shadow: var(--shadow);
+    }
+    .drawer.open .drawer-panel { transform: translateX(0); }
+    .drawer-head { margin-bottom: 34px; display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+    .drawer-head h2 { margin: 5px 0 0; font-family: var(--display); font-size: 37px; font-weight: 400; letter-spacing: -.035em; }
+    .drawer-head p { margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .form { display: grid; gap: 20px; }
+    .field { display: grid; gap: 8px; }
+    .field-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .field label { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    input, textarea, select {
+      width: 100%; min-height: 45px; padding: 0 12px; border: 1px solid var(--line);
+      border-radius: 3px; color: var(--ink); background: color-mix(in oklch, var(--paper), white 34%);
+    }
+    textarea { min-height: 105px; padding: 12px; resize: vertical; }
+    input:hover, textarea:hover, select:hover { border-color: var(--muted); }
+    .form-note { margin: -9px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .form-actions { margin-top: 10px; padding-top: 20px; display: flex; justify-content: end; gap: 9px; border-top: 1px solid var(--line); }
+    .danger-zone { margin-top: 42px; padding-top: 24px; border-top: 1px solid color-mix(in oklch, var(--danger), transparent 55%); }
+    .danger-zone h3 { margin: 0 0 8px; color: var(--danger); font-size: 14px; }
+    .danger-zone p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    .empty {
+      min-height: 300px; padding: 50px 20px; display: grid; place-items: center;
+      border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); text-align: center;
+    }
+    .empty-inner { max-width: 430px; }
+    .empty .empty-mark { font-family: var(--display); font-size: 62px; line-height: 1; }
+    .empty h3 { margin: 18px 0 7px; font-family: var(--display); font-size: 27px; font-weight: 400; }
+    .empty p { margin: 0 0 22px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .skeleton { min-height: 160px; background: linear-gradient(90deg, var(--paper-deep), var(--paper), var(--paper-deep)); background-size: 220% 100%; animation: shimmer 1.3s infinite; }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+    .toast-stack { position: fixed; right: 24px; bottom: 24px; z-index: 40; display: grid; gap: 9px; }
+    .toast {
+      width: min(390px, calc(100vw - 48px)); padding: 15px 17px; color: var(--paper); background: var(--ink);
+      border-left: 4px solid var(--green); box-shadow: var(--shadow); animation: toast-in .25s ease-out;
+    }
+    .toast.error { border-color: var(--danger); }
+    .toast strong { display: block; margin-bottom: 3px; font-size: 13px; }
+    .toast span { color: oklch(78% .02 248); font-size: 11px; line-height: 1.5; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } }
+    .mobile-menu { display: none; }
+
+    @media (max-width: 1120px) {
+      .team-grid, .project-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .metrics { grid-template-columns: repeat(3,1fr); }
+      .metric:nth-child(4) { border-left: 0; }
+      .detail-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 780px) {
+      body::before { left: 22px; }
+      .auth { grid-template-columns: 1fr; }
+      .auth-story { display: none; }
+      .auth-panel { min-height: 100vh; padding: 32px; }
+      .app { display: block; }
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0; z-index: 30; width: min(86vw, 310px);
+        transform: translateX(-100%); transition: transform .28s ease;
+      }
+      .sidebar.open { transform: translateX(0); box-shadow: var(--shadow); }
+      .mobile-menu { display: grid; }
+      .content { padding: 22px; }
+      .topbar { margin-bottom: 38px; }
+      .top-actions { display: none; }
+      .page-head { grid-template-columns: 1fr; }
+      .head-actions { justify-content: start; }
+      .metrics { grid-template-columns: repeat(2,1fr); }
+      .metric:nth-child(3), .metric:nth-child(5) { border-left: 0; }
+      .team-grid, .project-grid { grid-template-columns: 1fr; }
+      .drawer { grid-template-columns: 1fr; }
+      .drawer-scrim { display: none; }
+      .drawer-panel { width: 100vw; }
+    }
+    @media (max-width: 520px) {
+      .field-row { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric { padding: 17px 10px 17px 0; }
+      .page-head h1 { font-size: 42px; line-height: .98; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5M5.5 10v10h13V10M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 20v-2c0-3 2.3-5 5.5-5s5.5 2 5.5 5v2M15 5.5c2.2 0 3.5 1.4 3.5 3.3 0 1.7-1.1 2.8-2.7 3.2M16.5 14c2.5.5 4 2.2 4 4.6V20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-project" viewBox="0 0 24 24"><path d="M4 5h6l2 2h8v12H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-task" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m8 12 2.2 2.2L16 8.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19 13.5v-3l-2-.6a7 7 0 0 0-.8-1.9l1-1.8-2.1-2.1-1.8 1a7 7 0 0 0-2-.8L10.5 2h-3l-.6 2.2a7 7 0 0 0-1.9.8l-1.8-1L1.1 6.1l1 1.8a7 7 0 0 0-.8 2l-2.2.6v3l2.2.6a7 7 0 0 0 .8 2l-1 1.8L3.2 20l1.8-1a7 7 0 0 0 2 .8l.6 2.2h3l.6-2.2a7 7 0 0 0 2-.8l1.8 1 2.1-2.1-1-1.8a7 7 0 0 0 .8-2z" transform="translate(2)" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <main id="auth-view" class="auth">
+    <section class="auth-story">
+      <div class="brand"><span class="brand-mark">T</span><strong>TEAMFLOW</strong></div>
+      <div class="story-copy">
+        <p class="kicker">协作发生在清晰之中</p>
+        <h1>让工作<br>自然流动。</h1>
+        <p>从团队到项目，从想法到完成。一个安静、清晰、让每个人都知道下一步是什么的协作空间。</p>
+      </div>
+      <div class="auth-foot">TEAMFLOW / COLLABORATIVE WORKSPACE</div>
+    </section>
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab active" data-auth-tab="login" role="tab">登录</button>
+          <button class="auth-tab" data-auth-tab="register" role="tab">创建账号</button>
+        </div>
+        <div id="login-panel">
+          <h2>欢迎回来</h2>
+          <p>登录后继续推进团队中的项目与任务。</p>
+          <form id="login-form" class="form">
+            <div class="field"><label for="login-username">用户名</label><input id="login-username" name="username" minlength="4" maxlength="20" autocomplete="username" required></div>
+            <div class="field"><label for="login-password">密码</label><input id="login-password" name="password" type="password" minlength="8" maxlength="72" autocomplete="current-password" required></div>
+            <button class="button primary" type="submit">进入工作台</button>
+          </form>
+        </div>
+        <div id="register-panel" hidden>
+          <h2>开始协作</h2>
+          <p>创建账号，然后建立你的第一个团队。</p>
+          <form id="register-form" class="form">
+            <div class="field"><label for="register-username">用户名</label><input id="register-username" name="username" minlength="4" maxlength="20" autocomplete="username" required></div>
+            <div class="field"><label for="register-email">邮箱</label><input id="register-email" name="email" type="email" autocomplete="email" required></div>
+            <div class="field"><label for="register-password">密码</label><input id="register-password" name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></div>
+            <button class="button accent" type="submit">创建账号</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main id="app-view" class="app" hidden>
+    <aside id="sidebar" class="sidebar">
+      <div class="brand"><span class="brand-mark">T</span><strong>TEAMFLOW</strong></div>
+      <nav aria-label="主导航">
+        <button class="nav-button active" data-view="overview"><svg><use href="#i-home"></use></svg>总览</button>
+        <button class="nav-button" data-view="teams"><svg><use href="#i-team"></use></svg>团队</button>
+        <button class="nav-button" data-view="projects"><svg><use href="#i-project"></use></svg>项目</button>
+        <button class="nav-button" data-view="tasks"><svg><use href="#i-task"></use></svg>任务看板</button>
+        <button class="nav-button" data-view="settings"><svg><use href="#i-settings"></use></svg>个人设置</button>
+      </nav>
+      <p class="nav-label">最近团队</p>
+      <div id="sidebar-teams" class="entity-list"></div>
+      <p class="nav-label">当前团队的项目</p>
+      <div id="sidebar-projects" class="entity-list"></div>
+      <div class="sidebar-user">
+        <div id="sidebar-avatar" class="avatar">T</div>
+        <div><strong id="sidebar-name">TeamFlow 用户</strong><small id="sidebar-email">—</small></div>
+        <button id="logout-button" class="icon-button" title="退出登录" aria-label="退出登录"><svg><use href="#i-out"></use></svg></button>
+      </div>
+    </aside>
+
+    <section class="content">
+      <header class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button id="mobile-menu" class="icon-button mobile-menu" aria-label="打开导航"><svg><use href="#i-menu"></use></svg></button>
+          <div id="breadcrumb" class="breadcrumb">工作台 / <strong>总览</strong></div>
+        </div>
+        <div class="top-actions"><a class="button ghost" href="/tester" target="_blank" rel="noopener">API 调试台</a></div>
+      </header>
+      <div id="page"></div>
+    </section>
+  </main>
+
+  <div id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-scrim" data-close-drawer></div>
+    <aside class="drawer-panel">
+      <div class="drawer-head">
+        <div><p id="drawer-kicker" class="kicker">编辑</p><h2 id="drawer-title">操作</h2><p id="drawer-description"></p></div>
+        <button class="icon-button" data-close-drawer aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
+      </div>
+      <div id="drawer-body"></div>
+    </aside>
+  </div>
+  <div id="toasts" class="toast-stack" aria-live="polite"></div>
+
+  <script>
+    const API = "/api/v1";
+    const TOKEN_KEY = "teamflow_token";
+    const state = {
+      token: localStorage.getItem(TOKEN_KEY) || "",
+      profile: null, teams: [], projects: [], tasks: [], stats: null,
+      team: null, project: null, task: null, view: "overview",
+      teamPage: 1, teamTotal: 0, projectPage: 1, projectTotal: 0, taskPage: 1, taskTotal: 0,
+      filterPriority: "", filterAssignee: "",
+      loading: false
+    };
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+    const esc = (value = "") => String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const initials = (name = "T") => [...String(name)].slice(0, 2).join("").toUpperCase();
+    const fmtDate = value => value ? new Intl.DateTimeFormat("zh-CN", {year:"numeric",month:"short",day:"numeric"}).format(new Date(value)) : "未设置";
+    const inputDate = value => value ? new Date(value).toISOString().slice(0, 10) : "";
+    const isoDate = value => value ? new Date(`${value}T00:00:00`).toISOString() : null;
+    const truncate = (value = "", length = 78) => value.length > length ? `${value.slice(0, length)}…` : value;
+    const userById = id => state.project?.members?.find(user => user.ID === id) || state.team?.members?.find(user => user.ID === id);
+    const labels = {
+      todo:"待办", in_progress:"进行中", review:"待验收", done:"已完成",
+      low:"低", medium:"中", high:"高", none:"无", active:"进行中", archived:"已归档"
+    };
+    const transitions = {
+      todo:["in_progress"], in_progress:["review","todo"], review:["done","in_progress"], done:["review"]
+    };
+
+    function toast(title, message = "", type = "success") {
+      const item = document.createElement("div");
+      item.className = `toast ${type === "error" ? "error" : ""}`;
+      item.innerHTML = `<strong>${esc(title)}</strong>${message ? `<span>${esc(message)}</span>` : ""}`;
+      $("#toasts").append(item);
+      setTimeout(() => item.remove(), 4200);
+    }
+
+    function extractError(payload, status) {
+      return payload?.msg || payload?.error || payload?.message || `请求失败（HTTP ${status}）`;
+    }
+
+    async function request(path, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (state.token) headers.set("Authorization", `Bearer ${state.token}`);
+      if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
+      const response = await fetch(`${API}${path}`, {...options, headers});
+      let payload = null;
+      const text = await response.text();
+      try { payload = text ? JSON.parse(text) : null; } catch { payload = {message:text}; }
+      if (response.status === 401 && state.token) {
+        logout(false);
+        throw new Error("登录状态已失效，请重新登录");
+      }
+      if (!response.ok) throw new Error(extractError(payload, response.status));
+      return payload;
+    }
+
+    function setBusy(form, busy) {
+      const button = $("button[type=submit]", form);
+      if (!button) return;
+      if (busy) { button.dataset.label = button.textContent; button.textContent = "处理中…"; }
+      else if (button.dataset.label) button.textContent = button.dataset.label;
+      button.disabled = busy;
+    }
+
+    function showAuth(tab = "login") {
+      $("#auth-view").hidden = false; $("#app-view").hidden = true;
+      $$(".auth-tab").forEach(button => button.classList.toggle("active", button.dataset.authTab === tab));
+      $("#login-panel").hidden = tab !== "login"; $("#register-panel").hidden = tab !== "register";
+    }
+
+    function showApp() {
+      $("#auth-view").hidden = true; $("#app-view").hidden = false;
+    }
+
+    async function bootstrap() {
+      if (!state.token) return showAuth();
+      showApp();
+      try {
+        const [profileResponse, teamResponse] = await Promise.all([
+          request("/users/me"), request("/teams/?page=1&page_size=100")
+        ]);
+        state.profile = profileResponse.data;
+        state.teams = teamResponse.data?.list || [];
+        state.teamTotal = teamResponse.data?.total || 0;
+        updateUser();
+        if (state.teams.length) await selectTeam(state.teams[0].ID, false);
+        renderSidebar();
+        render();
+      } catch (error) { toast("无法载入工作台", error.message, "error"); }
+    }
+
+    function updateUser() {
+      if (!state.profile) return;
+      $("#sidebar-name").textContent = state.profile.username || "TeamFlow 用户";
+      $("#sidebar-email").textContent = state.profile.email || "";
+      const avatar = $("#sidebar-avatar");
+      avatar.innerHTML = state.profile.avatar
+        ? `<img src="/uploads/avatar/${encodeURIComponent(state.profile.avatar)}" alt="">`
+        : esc(initials(state.profile.username));
+    }
+
+    function renderSidebar() {
+      $("#sidebar-teams").innerHTML = state.teams.slice(0, 6).map((team, index) => `
+        <button class="entity-button ${state.team?.ID === team.ID ? "active" : ""}" data-team-id="${team.ID}">
+          <span class="entity-index">${index + 1}</span><span>${esc(team.name)}</span>
+        </button>`).join("") || `<small style="padding:9px;color:oklch(62% .02 248)">还没有团队</small>`;
+      $("#sidebar-projects").innerHTML = state.projects.slice(0, 7).map((project, index) => `
+        <button class="entity-button ${state.project?.ID === project.ID ? "active" : ""}" data-project-id="${project.ID}">
+          <span class="entity-index">${String.fromCharCode(65 + index)}</span><span>${esc(project.name)}</span>
+        </button>`).join("") || `<small style="padding:9px;color:oklch(62% .02 248)">选择或创建团队</small>`;
+    }
+
+    async function loadTeams(page = 1) {
+      const response = await request(`/teams/?page=${page}&page_size=12`);
+      state.teams = response.data?.list || [];
+      state.teamTotal = response.data?.total || 0;
+      state.teamPage = response.data?.page || page;
+      renderSidebar();
+    }
+
+    async function selectTeam(id, shouldRender = true) {
+      const [detail, projects] = await Promise.all([
+        request(`/teams/${id}`), request(`/teams/${id}/projects?page=1&page_size=100`)
+      ]);
+      state.team = detail.data;
+      state.projects = projects.data?.list || [];
+      state.projectTotal = projects.data?.total || 0;
+      state.project = null; state.tasks = []; state.stats = null;
+      renderSidebar();
+      if (shouldRender) { state.view = "team-detail"; setActiveNav(""); render(); closeMobile(); }
+    }
+
+    async function selectProject(id, view = "project-detail") {
+      const [detail, stats, tasks] = await Promise.all([
+        request(`/projects/${id}`),
+        request(`/projects/${id}/stats`),
+        request(`/tasks?project_id=${id}&page=1&size=100`)
+      ]);
+      state.project = detail.data;
+      state.stats = stats.data;
+      state.tasks = tasks.tasks || [];
+      state.taskTotal = tasks.total || 0;
+      state.taskPage = tasks.page || 1;
+      state.view = view;
+      renderSidebar(); setActiveNav(view === "tasks" ? "tasks" : ""); render(); closeMobile();
+    }
+
+    function setActiveNav(view) {
+      $$(".nav-button").forEach(button => button.classList.toggle("active", button.dataset.view === view));
+    }
+
+    function breadcrumb(current) {
+      const parts = ["工作台"];
+      if (state.team) parts.push(state.team.name);
+      if (state.project) parts.push(state.project.name);
+      if (current) parts.push(current);
+      $("#breadcrumb").innerHTML = parts.map((item, index) => index === parts.length - 1 ? `<strong>${esc(item)}</strong>` : esc(item)).join(" / ");
+    }
+
+    function pageHead(kicker, title, description, actions = "") {
+      return `<div class="page-head"><div><p class="kicker">${esc(kicker)}</p><h1>${esc(title)}</h1><p>${esc(description)}</p></div><div class="head-actions">${actions}</div></div>`;
+    }
+
+    function empty(mark, title, copy, action = "") {
+      return `<div class="empty"><div class="empty-inner"><div class="empty-mark">${esc(mark)}</div><h3>${esc(title)}</h3><p>${esc(copy)}</p>${action}</div></div>`;
+    }
+
+    function render() {
+      const page = $("#page");
+      const views = {
+        overview: renderOverview, teams: renderTeams, projects: renderProjects,
+        tasks: renderTasks, settings: renderSettings,
+        "team-detail": renderTeamDetail, "project-detail": renderProjectDetail
+      };
+      page.innerHTML = (views[state.view] || renderOverview)();
+      bindPageActions();
+    }
+
+    function renderOverview() {
+      breadcrumb("总览");
+      const openTasks = state.tasks.filter(task => task.status !== "done").length;
+      const actions = `<button class="button" data-action="new-team">新建团队</button>${state.team ? `<button class="button primary" data-action="new-project">新建项目</button>` : ""}`;
+      return pageHead("今日工作台", `你好，${state.profile?.username || "伙伴"}`, "把注意力留给真正重要的工作。这里汇总了你的团队、当前项目和待推进事项。", actions)
+        + `<div class="metrics">
+          <div class="metric"><strong>${state.teamTotal}</strong><span>参与团队</span></div>
+          <div class="metric"><strong>${state.projectTotal}</strong><span>当前团队项目</span></div>
+          <div class="metric"><strong>${state.taskTotal}</strong><span>当前项目任务</span></div>
+          <div class="metric"><strong>${openTasks}</strong><span>仍需推进</span></div>
+          <div class="metric"><strong>${state.stats?.done_count || 0}</strong><span>已经完成</span></div>
+        </div>
+        <div class="section-head"><div><h2>你的团队</h2><p>选择一个团队，继续查看项目。</p></div><button class="button ghost" data-view-go="teams">查看全部 →</button></div>
+        ${renderTeamCards(state.teams.slice(0, 6))}
+        ${state.project ? `<div class="section-head"><div><h2>当前项目的任务</h2><p>${esc(state.project.name)} · 最近任务</p></div><button class="button ghost" data-view-go="tasks">打开看板 →</button></div>${renderTaskStrip()}` : ""}`;
+    }
+
+    function renderTeamCards(teams) {
+      if (!teams.length) return empty("01", "从第一个团队开始", "建立团队后，就可以邀请成员、创建项目并分配任务。", `<button class="button primary" data-action="new-team">创建团队</button>`);
+      return `<div class="team-grid">${teams.map((team, index) => `
+        <button class="entity-card" data-team-id="${team.ID}">
+          <div class="card-meta"><span>团队 ${String(index + 1).padStart(2, "0")}</span><span>${team.owner_id === state.profile?.id ? "OWNER" : "MEMBER"}</span></div>
+          <h3>${esc(team.name)}</h3><p>${esc(truncate(team.description || "尚未填写团队介绍。"))}</p>
+          <div class="card-foot"><span>${team.owner?.username ? `由 ${esc(team.owner.username)} 创建` : `ID ${team.ID}`}</span><span class="arrow">↗</span></div>
+        </button>`).join("")}</div>`;
+    }
+
+    function renderTeams() {
+      breadcrumb("团队");
+      return pageHead("团队空间", "与你一起工作的人", "团队承载成员与项目。进入任一团队，可以维护成员、管理资料并查看其全部项目。", `<button class="button primary" data-action="new-team">新建团队</button>`)
+        + renderTeamCards(state.teams)
+        + renderPagination(state.teamPage, state.teamTotal, 12, "team-page");
+    }
+
+    function renderTeamDetail() {
+      breadcrumb("团队详情");
+      if (!state.team) return empty("—", "请选择团队", "从左侧选择一个团队继续。");
+      const isOwner = state.team.owner_id === state.profile?.id;
+      return pageHead("团队详情", state.team.name, state.team.description || "这个团队还没有介绍。", `
+          <button class="button" data-action="team-members">成员管理</button>
+          ${isOwner ? `<button class="button" data-action="edit-team">编辑团队</button>` : ""}
+          <button class="button primary" data-action="new-project">新建项目</button>`)
+        + `<div class="detail-layout">
+          <section>
+            <div class="section-head"><div><h2>团队项目</h2><p>${state.projects.length} 个项目</p></div><button class="button ghost" data-view-go="projects">全部项目 →</button></div>
+            ${renderProjectCards(state.projects)}
+          </section>
+          <aside>
+            <div class="detail-copy"><h2>团队资料</h2></div>
+            <dl class="facts">
+              <div class="fact"><dt>团队 ID</dt><dd>#${state.team.ID}</dd></div>
+              <div class="fact"><dt>所有者</dt><dd>${esc(state.team.owner?.username || `用户 #${state.team.owner_id}`)}</dd></div>
+              <div class="fact"><dt>成员</dt><dd>${state.team.members?.length || 0} 人</dd></div>
+              <div class="fact"><dt>创建时间</dt><dd>${fmtDate(state.team.CreatedAt)}</dd></div>
+            </dl>
+            <div class="section-head"><div><h2>成员</h2></div><button class="button ghost small" data-action="team-members">管理</button></div>
+            ${renderMembers(state.team.members || [], "team")}
+          </aside>
+        </div>`;
+    }
+
+    function renderProjectCards(projects) {
+      if (!projects.length) return empty("02", "创建团队的第一个项目", "项目把目标、成员和任务聚到一起。", `<button class="button primary" data-action="new-project">创建项目</button>`);
+      return `<div class="project-grid">${projects.map((project, index) => `
+        <button class="entity-card" data-project-id="${project.ID}">
+          <div class="card-meta"><span>项目 ${String(index + 1).padStart(2, "0")}</span><span class="badge ${project.status}">${labels[project.status] || project.status}</span></div>
+          <h3>${esc(project.name)}</h3><p>${esc(truncate(project.description || "尚未填写项目介绍。"))}</p>
+          <div class="card-foot"><span>${fmtDate(project.start_date)} — ${fmtDate(project.end_date)}</span><span class="arrow">↗</span></div>
+        </button>`).join("")}</div>`;
+    }
+
+    function renderProjects() {
+      breadcrumb("项目");
+      if (!state.team) return pageHead("项目空间", "先选择一个团队", "项目属于团队。选择团队后即可查看和创建项目。", `<button class="button primary" data-view-go="teams">选择团队</button>`) + empty("02", "还没有上下文", "请从左侧最近团队或团队列表中选择一个团队。");
+      return pageHead("项目空间", `${state.team.name} 的项目`, "每个项目都有独立的成员、计划、任务看板与进度统计。", `<button class="button primary" data-action="new-project">新建项目</button>`)
+        + renderProjectCards(state.projects)
+        + renderPagination(state.projectPage, state.projectTotal, 12, "project-page");
+    }
+
+    function renderProjectDetail() {
+      breadcrumb("项目详情");
+      if (!state.project) return empty("—", "请选择项目", "从项目列表中选择一个项目继续。");
+      const isOwner = state.project.owner_id === state.profile?.id;
+      const stats = state.stats || {};
+      return pageHead("项目详情", state.project.name, state.project.description || "这个项目还没有介绍。", `
+          <button class="button" data-action="project-members">成员管理</button>
+          ${isOwner ? `<button class="button" data-action="edit-project">编辑项目</button>` : ""}
+          <button class="button primary" data-view-go="tasks">打开任务看板</button>`)
+        + `<div class="metrics">
+          <div class="metric"><strong>${stats.member_count || 0}</strong><span>项目成员</span></div>
+          <div class="metric"><strong>${stats.task_count || 0}</strong><span>全部任务</span></div>
+          <div class="metric"><strong>${stats.todo_count || 0}</strong><span>待办</span></div>
+          <div class="metric"><strong>${state.tasks.filter(t => ["in_progress","review"].includes(t.status)).length}</strong><span>推进中</span></div>
+          <div class="metric"><strong>${stats.done_count || 0}</strong><span>已完成</span></div>
+        </div>
+        <div class="detail-layout">
+          <section>
+            <div class="detail-copy"><h2>项目说明</h2><p>${esc(state.project.description || "尚未填写项目说明。")}</p></div>
+            <div class="section-head"><div><h2>最近任务</h2><p>点击任务可查看与编辑</p></div><button class="button ghost" data-view-go="tasks">全部任务 →</button></div>
+            ${renderTaskStrip()}
+          </section>
+          <aside>
+            <div class="detail-copy"><h2>计划</h2></div>
+            <dl class="facts">
+              <div class="fact"><dt>状态</dt><dd><span class="badge ${state.project.status}">${labels[state.project.status] || state.project.status}</span></dd></div>
+              <div class="fact"><dt>开始</dt><dd>${fmtDate(state.project.start_date)}</dd></div>
+              <div class="fact"><dt>结束</dt><dd>${fmtDate(state.project.end_date)}</dd></div>
+              <div class="fact"><dt>所有者</dt><dd>${esc(state.project.owner?.username || `用户 #${state.project.owner_id}`)}</dd></div>
+            </dl>
+            <div class="section-head"><div><h2>成员</h2></div><button class="button ghost small" data-action="project-members">管理</button></div>
+            ${renderMembers(state.project.members || [], "project")}
+          </aside>
+        </div>`;
+    }
+
+    function renderTaskStrip() {
+      if (!state.tasks.length) return empty("03", "还没有任务", "创建第一条任务，把目标变成明确的下一步。", `<button class="button primary" data-action="new-task">创建任务</button>`);
+      return `<div class="task-list">${state.tasks.slice(0, 5).map(task => taskCard(task)).join("")}</div>`;
+    }
+
+    function taskCard(task) {
+      const assignee = task.assignee || userById(task.assignee_id);
+      const overdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
+      return `<article class="task-card ${overdue ? "overdue" : ""}" data-task-id="${task.ID}" tabindex="0">
+        <div class="task-top"><span class="priority ${task.priority}"></span><span class="task-id">TF-${String(task.ID).padStart(4, "0")}</span></div>
+        <h4>${esc(task.title)}</h4><p>${esc(truncate(task.description || "暂无说明", 62))}</p>
+        <div class="task-bottom"><span class="task-assignee"><span class="mini-avatar">${esc(initials(assignee?.username || "?"))}</span>${esc(assignee?.username || "未分配")}</span><span>${task.due_date ? fmtDate(task.due_date) : "无截止日期"}</span></div>
+      </article>`;
+    }
+
+    function renderTasks() {
+      breadcrumb("任务看板");
+      if (!state.project) return pageHead("任务看板", "先选择一个项目", "任务始终属于某个项目。选择项目后即可开始规划工作。", `<button class="button primary" data-view-go="projects">选择项目</button>`) + empty("03", "还没有项目上下文", "请从左侧项目或项目列表中选择一个项目。");
+      const filtered = filterTasks();
+      const groups = ["todo","in_progress","review","done"];
+      return pageHead("任务看板", state.project.name, "按照真实工作流推进任务：待办 → 进行中 → 待验收 → 已完成。", `<button class="button primary" data-action="new-task">新建任务</button>`)
+        + `<div class="toolbar">
+          <div class="field-inline"><label for="filter-priority">优先级</label><select id="filter-priority"><option value="">全部</option><option value="high" ${state.filterPriority === "high" ? "selected" : ""}>高</option><option value="medium" ${state.filterPriority === "medium" ? "selected" : ""}>中</option><option value="low" ${state.filterPriority === "low" ? "selected" : ""}>低</option><option value="none" ${state.filterPriority === "none" ? "selected" : ""}>无</option></select></div>
+          <div class="field-inline"><label for="filter-assignee">负责人</label><select id="filter-assignee"><option value="">全部</option><option value="none" ${state.filterAssignee === "none" ? "selected" : ""}>未分配</option>${(state.project.members || []).map(u => `<option value="${u.ID}" ${state.filterAssignee === String(u.ID) ? "selected" : ""}>${esc(u.username)}</option>`).join("")}</select></div>
+          <span class="spacer"></span><span style="color:var(--muted);font-size:12px">${filtered.length} 条任务</span>
+        </div>
+        <div class="board">${groups.map(status => {
+          const tasks = filtered.filter(task => task.status === status);
+          return `<section class="board-column"><header class="column-head"><h3>${labels[status]}</h3><span>${String(tasks.length).padStart(2,"0")}</span></header><div class="task-list">${tasks.map(taskCard).join("") || `<div style="padding:28px 12px;color:var(--muted);font-size:12px;text-align:center;border:1px dashed var(--line)">暂无任务</div>`}</div></section>`;
+        }).join("")}</div>`;
+    }
+
+    function filterTasks() {
+      const priority = state.filterPriority;
+      const assignee = state.filterAssignee;
+      return state.tasks.filter(task => (!priority || task.priority === priority)
+        && (!assignee || (assignee === "none" ? !task.assignee_id : String(task.assignee_id) === assignee)));
+    }
+
+    function renderMembers(members, scope) {
+      if (!members.length) return `<p style="color:var(--muted);font-size:12px">暂无成员资料。</p>`;
+      return `<div class="member-list">${members.slice(0, 6).map(user => `
+        <div class="member-row"><div class="avatar">${esc(initials(user.username))}</div>
+          <div><strong>${esc(user.username)}</strong><small>${esc(user.email || `用户 #${user.ID}`)}</small></div>
+          <span class="badge">${scope === "team" && user.ID === state.team?.owner_id || scope === "project" && user.ID === state.project?.owner_id ? "OWNER" : "MEMBER"}</span>
+        </div>`).join("")}</div>`;
+    }
+
+    function renderPagination(page, total, size, action) {
+      const pages = Math.max(1, Math.ceil(total / size));
+      if (pages <= 1) return "";
+      return `<div class="form-actions" style="border-top:0"><button class="button small" data-${action}="${page - 1}" ${page <= 1 ? "disabled" : ""}>上一页</button><span style="padding:8px;color:var(--muted);font-size:12px">${page} / ${pages}</span><button class="button small" data-${action}="${page + 1}" ${page >= pages ? "disabled" : ""}>下一页</button></div>`;
+    }
+
+    function renderSettings() {
+      breadcrumb("个人设置");
+      const profile = state.profile || {};
+      return pageHead("个人设置", "你的工作身份", "维护公开资料、头像与登录密码。头像支持 JPG、JPEG、PNG，文件不超过 5 MB。")
+        + `<div class="detail-layout">
+          <section>
+            <div class="detail-copy"><h2>基础资料</h2></div>
+            <form id="profile-form" class="form" style="max-width:620px">
+              <div class="field"><label for="profile-username">用户名</label><input id="profile-username" name="username" value="${esc(profile.username || "")}"></div>
+              <div class="field"><label for="profile-email">邮箱</label><input id="profile-email" value="${esc(profile.email || "")}" disabled><p class="form-note">当前后端暂不支持修改邮箱。</p></div>
+              <div class="field"><label for="profile-bio">个人介绍</label><textarea id="profile-bio" name="bio">${esc(profile.bio || "")}</textarea></div>
+              <div><button class="button primary" type="submit">保存资料</button></div>
+            </form>
+          </section>
+          <aside>
+            <div class="detail-copy"><h2>头像</h2></div>
+            <form id="avatar-form" class="form">
+              <div class="avatar" style="width:88px;height:88px;font-size:25px">${profile.avatar ? `<img src="/uploads/avatar/${encodeURIComponent(profile.avatar)}" alt="">` : esc(initials(profile.username))}</div>
+              <div class="field"><label for="avatar-file">选择图片</label><input id="avatar-file" name="avatar" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" required></div>
+              <div><button class="button" type="submit">上传头像</button></div>
+            </form>
+            <div class="detail-copy" style="margin-top:42px"><h2>登录密码</h2></div>
+            <form id="password-form" class="form">
+              <div class="field"><label for="old-password">当前密码</label><input id="old-password" name="old_password" type="password" minlength="6" maxlength="20" required></div>
+              <div class="field"><label for="new-password">新密码</label><input id="new-password" name="new_password" type="password" minlength="8" maxlength="72" required></div>
+              <div><button class="button" type="submit">更新密码</button></div>
+            </form>
+          </aside>
+        </div>`;
+    }
+
+    function openDrawer({kicker = "编辑", title, description = "", body}) {
+      $("#drawer-kicker").textContent = kicker;
+      $("#drawer-title").textContent = title;
+      $("#drawer-description").textContent = description;
+      $("#drawer-body").innerHTML = body;
+      $("#drawer").classList.add("open");
+      $("#drawer").setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      setTimeout(() => $("input, textarea, select", $("#drawer-body"))?.focus(), 100);
+    }
+
+    function closeDrawer() {
+      $("#drawer").classList.remove("open");
+      $("#drawer").setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    const textField = (name, label, value = "", attrs = "") => `<div class="field"><label for="field-${name}">${label}</label><input id="field-${name}" name="${name}" value="${esc(value)}" ${attrs}></div>`;
+    const textArea = (name, label, value = "", attrs = "") => `<div class="field"><label for="field-${name}">${label}</label><textarea id="field-${name}" name="${name}" ${attrs}>${esc(value)}</textarea></div>`;
+
+    function teamForm(team = null) {
+      openDrawer({
+        kicker: team ? "团队设置" : "建立协作空间", title: team ? "编辑团队" : "新建团队",
+        description: team ? "更新团队名称、介绍或头像地址。" : "先建立团队，再邀请成员、创建项目。",
+        body: `<form id="team-form" class="form" data-id="${team?.ID || ""}">
+          ${textField("name","团队名称",team?.name,"required minlength=2 maxlength=100")}
+          ${textArea("description","团队介绍",team?.description,"maxlength=500")}
+          ${team ? textField("avatar","头像地址",team.avatar || "","maxlength=500") : ""}
+          <div class="form-actions"><button type="button" class="button" data-close-drawer>取消</button><button type="submit" class="button primary">${team ? "保存修改" : "创建团队"}</button></div>
+        </form>${team ? `<div class="danger-zone"><h3>危险操作</h3><p>解散团队会删除团队关系，且无法在界面中撤销。</p><button class="button danger" data-action="delete-team">解散团队</button></div>` : ""}`
+      });
+    }
+
+    function projectForm(project = null) {
+      if (!state.team) return toast("请先选择团队", "", "error");
+      openDrawer({
+        kicker: project ? "项目设置" : state.team.name, title: project ? "编辑项目" : "新建项目",
+        description: "设置清晰的项目边界和计划周期。",
+        body: `<form id="project-form" class="form" data-id="${project?.ID || ""}">
+          ${textField("name","项目名称",project?.name,"required minlength=2 maxlength=100")}
+          ${textArea("description","项目说明",project?.description,"maxlength=500")}
+          ${project ? `<div class="field"><label for="field-status">项目状态</label><select id="field-status" name="status"><option value="active" ${project.status === "active" ? "selected" : ""}>进行中</option><option value="archived" ${project.status === "archived" ? "selected" : ""}>已归档</option></select></div>` : ""}
+          <div class="field-row">${textField("start_date","开始日期",inputDate(project?.start_date),"type=date")}${textField("end_date","结束日期",inputDate(project?.end_date),"type=date")}</div>
+          <div class="form-actions"><button type="button" class="button" data-close-drawer>取消</button><button type="submit" class="button primary">${project ? "保存修改" : "创建项目"}</button></div>
+        </form>${project ? `<div class="danger-zone"><h3>危险操作</h3><p>删除项目会移除项目与成员关系，请确认已妥善处理项目数据。</p><button class="button danger" data-action="delete-project">删除项目</button></div>` : ""}`
+      });
+    }
+
+    function taskForm(task = null) {
+      if (!state.project) return toast("请先选择项目", "", "error");
+      openDrawer({
+        kicker: task ? `TF-${String(task.ID).padStart(4,"0")}` : state.project.name,
+        title: task ? "任务详情" : "新建任务",
+        description: task ? "更新任务信息、负责人和工作流状态。" : "把工作拆成一条明确、可推进的任务。",
+        body: `<form id="task-form" class="form" data-id="${task?.ID || ""}">
+          ${textField("title","任务标题",task?.title,"required maxlength=200")}
+          ${textArea("description","任务说明",task?.description)}
+          <div class="field-row">
+            <div class="field"><label for="field-priority">优先级</label><select id="field-priority" name="priority">${["none","low","medium","high"].map(p => `<option value="${p}" ${(task?.priority || "medium") === p ? "selected" : ""}>${labels[p]}</option>`).join("")}</select></div>
+            ${textField("due_date","截止日期",inputDate(task?.due_date),"type=date")}
+          </div>
+          <div class="form-actions"><button type="button" class="button" data-close-drawer>取消</button><button type="submit" class="button primary">${task ? "保存修改" : "创建任务"}</button></div>
+        </form>
+        ${task ? `<div class="section-head"><div><h2>负责人</h2><p>仅项目管理员可以分配</p></div></div>
+          <form id="assign-form" class="form"><div class="field"><select name="assignee_id" required><option value="">选择成员</option>${(state.project.members || []).map(u => `<option value="${u.ID}" ${task.assignee_id === u.ID ? "selected" : ""}>${esc(u.username)} · #${u.ID}</option>`).join("")}</select></div><div><button class="button" type="submit">更新负责人</button></div></form>
+          <div class="section-head"><div><h2>推进状态</h2><p>当前：${labels[task.status] || task.status}</p></div></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">${(transitions[task.status] || []).map(s => `<button class="button small" data-task-status="${s}">转为${labels[s]}</button>`).join("") || `<span style="color:var(--muted);font-size:12px">当前没有可执行的状态转换。</span>`}</div>
+          <div class="danger-zone"><h3>删除任务</h3><p>任务创建者或项目管理员可以删除任务。</p><button class="button danger" data-action="delete-task">删除任务</button></div>` : ""}`
+      });
+    }
+
+    function memberManager(scope) {
+      const entity = scope === "team" ? state.team : state.project;
+      if (!entity) return;
+      const members = entity.members || [];
+      openDrawer({
+        kicker: scope === "team" ? "团队成员" : "项目成员", title: "成员管理",
+        description: scope === "team" ? "按用户 ID 邀请成员加入团队。" : "只有已在团队中的用户才能加入项目。",
+        body: `<form id="member-form" class="form" data-scope="${scope}">
+          <div class="field-row">${textField("user_id","用户 ID","","type=number min=1 required")}<div class="field"><label for="field-role">角色</label><select id="field-role" name="role"><option value="member">普通成员</option><option value="admin">管理员</option></select></div></div>
+          <div><button class="button primary" type="submit">添加成员</button></div>
+        </form>
+        <div class="section-head"><div><h2>当前成员</h2><p>${members.length} 人</p></div></div>
+        <div class="member-list">${members.map(user => {
+          const owner = user.ID === entity.owner_id;
+          return `<div class="member-row"><div class="avatar">${esc(initials(user.username))}</div><div><strong>${esc(user.username)}</strong><small>${esc(user.email || `用户 #${user.ID}`)}</small></div>${owner ? `<span class="badge">OWNER</span>` : `<button class="button ghost small" data-remove-member="${user.ID}" data-scope="${scope}">移除</button>`}</div>`;
+        }).join("")}</div>
+        ${entity.owner_id !== state.profile?.id ? `<div class="danger-zone"><h3>离开${scope === "team" ? "团队" : "项目"}</h3><p>离开后将无法继续访问相关内容。</p><button class="button danger" data-leave="${scope}">确认离开</button></div>` : ""}`
+      });
+    }
+
+    async function confirmAction(message) {
+      return window.confirm(message);
+    }
+
+    function bindPageActions() {
+      $$("[data-action]").forEach(button => button.addEventListener("click", () => handleAction(button.dataset.action)));
+      $$("[data-view-go]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.viewGo)));
+      $$("[data-team-id]", $("#page")).forEach(button => button.addEventListener("click", () => selectTeam(Number(button.dataset.teamId))));
+      $$("[data-project-id]", $("#page")).forEach(button => button.addEventListener("click", () => selectProject(Number(button.dataset.projectId))));
+      $$("[data-task-id]").forEach(card => {
+        const open = () => { const task = state.tasks.find(t => t.ID === Number(card.dataset.taskId)); if (task) { state.task = task; taskForm(task); } };
+        card.addEventListener("click", open); card.addEventListener("keydown", event => { if (event.key === "Enter") open(); });
+      });
+      $("#filter-priority")?.addEventListener("change", event => { state.filterPriority = event.target.value; render(); });
+      $("#filter-assignee")?.addEventListener("change", event => { state.filterAssignee = event.target.value; render(); });
+      $("#profile-form")?.addEventListener("submit", saveProfile);
+      $("#avatar-form")?.addEventListener("submit", uploadAvatar);
+      $("#password-form")?.addEventListener("submit", changePassword);
+      $$("[data-team-page]").forEach(button => button.addEventListener("click", async () => { await loadTeams(Number(button.dataset.teamPage)); render(); }));
+    }
+
+    function navigate(view) {
+      if (view === "tasks" && !state.project) { state.view = "projects"; setActiveNav("projects"); }
+      else { state.view = view; setActiveNav(view); }
+      render(); closeMobile();
+    }
+
+    function handleAction(action) {
+      if (action === "new-team") teamForm();
+      if (action === "edit-team") teamForm(state.team);
+      if (action === "new-project") projectForm();
+      if (action === "edit-project") projectForm(state.project);
+      if (action === "new-task") taskForm();
+      if (action === "team-members") memberManager("team");
+      if (action === "project-members") memberManager("project");
+    }
+
+    async function handleDrawerSubmit(event) {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      event.preventDefault();
+      setBusy(form, true);
+      try {
+        if (form.id === "team-form") await saveTeam(form);
+        if (form.id === "project-form") await saveProject(form);
+        if (form.id === "task-form") await saveTask(form);
+        if (form.id === "member-form") await addMember(form);
+        if (form.id === "assign-form") await assignTask(form);
+      } catch (error) { toast("操作未完成", error.message, "error"); }
+      finally { setBusy(form, false); }
+    }
+
+    async function saveTeam(form) {
+      const data = Object.fromEntries(new FormData(form));
+      const id = Number(form.dataset.id);
+      const payload = {name:data.name, description:data.description};
+      if (id) payload.avatar = data.avatar;
+      const response = await request(id ? `/teams/${id}` : "/teams/", {method:id ? "PUT" : "POST", body:JSON.stringify(payload)});
+      toast(id ? "团队已更新" : "团队已创建");
+      await loadTeams(1);
+      await selectTeam(response.data.ID, false);
+      closeDrawer(); state.view = "team-detail"; render();
+    }
+
+    async function saveProject(form) {
+      const data = Object.fromEntries(new FormData(form));
+      const id = Number(form.dataset.id);
+      const payload = {
+        name:data.name, description:data.description,
+        start_date:isoDate(data.start_date), end_date:isoDate(data.end_date)
+      };
+      if (id) payload.status = data.status;
+      const response = await request(id ? `/projects/${id}` : `/teams/${state.team.ID}/projects`, {method:id ? "PUT" : "POST", body:JSON.stringify(payload)});
+      toast(id ? "项目已更新" : "项目已创建");
+      await selectTeam(state.team.ID, false);
+      await selectProject(response.data.ID, "project-detail");
+      closeDrawer();
+    }
+
+    async function saveTask(form) {
+      const data = Object.fromEntries(new FormData(form));
+      const id = Number(form.dataset.id);
+      const payload = {title:data.title, description:data.description, priority:data.priority};
+      if (data.due_date) payload.due_date = isoDate(data.due_date);
+      if (!id) payload.project_id = state.project.ID;
+      const response = await request(id ? `/tasks/${id}` : "/tasks", {method:id ? "PUT" : "POST", body:JSON.stringify(payload)});
+      const task = response.task;
+      state.tasks = id ? state.tasks.map(item => item.ID === id ? task : item) : [task, ...state.tasks];
+      state.task = task; toast(id ? "任务已更新" : "任务已创建");
+      closeDrawer(); render();
+    }
+
+    async function addMember(form) {
+      const data = Object.fromEntries(new FormData(form));
+      const scope = form.dataset.scope;
+      const entity = scope === "team" ? state.team : state.project;
+      await request(`/${scope === "team" ? "teams" : "projects"}/${entity.ID}/members`, {
+        method:"POST", body:JSON.stringify({user_id:Number(data.user_id), role:data.role})
+      });
+      toast("成员已添加");
+      if (scope === "team") await selectTeam(entity.ID, false);
+      else await selectProject(entity.ID, state.view);
+      memberManager(scope);
+    }
+
+    async function assignTask(form) {
+      const assigneeId = Number(new FormData(form).get("assignee_id"));
+      const response = await request(`/tasks/${state.task.ID}/assignee`, {method:"PATCH", body:JSON.stringify({assignee_id:assigneeId})});
+      state.task = response.task; state.tasks = state.tasks.map(t => t.ID === state.task.ID ? state.task : t);
+      toast("负责人已更新"); taskForm(state.task);
+    }
+
+    async function saveProfile(event) {
+      event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+      try {
+        const data = Object.fromEntries(new FormData(form));
+        await request("/users/me", {method:"PUT", body:JSON.stringify(data)});
+        if (data.username && data.username !== state.profile.username) {
+          logout(false);
+          $("#login-username").value = data.username;
+          toast("用户名已更新", "请使用新用户名重新登录。");
+          return;
+        }
+        state.profile.bio = data.bio;
+        updateUser(); toast("个人资料已保存"); render();
+      } catch (error) { toast("保存失败", error.message, "error"); } finally { setBusy(form, false); }
+    }
+
+    async function uploadAvatar(event) {
+      event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+      try {
+        const response = await request("/users/me/avatar", {method:"POST", body:new FormData(form)});
+        state.profile.avatar = response.data; updateUser(); toast("头像上传成功"); render();
+      } catch (error) { toast("上传失败", error.message, "error"); } finally { setBusy(form, false); }
+    }
+
+    async function changePassword(event) {
+      event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+      try {
+        const data = Object.fromEntries(new FormData(form));
+        await request("/users/me/password", {method:"PUT", body:JSON.stringify(data)});
+        form.reset(); toast("密码已更新");
+      } catch (error) { toast("更新失败", error.message, "error"); } finally { setBusy(form, false); }
+    }
+
+    async function handleDrawerClick(event) {
+      const target = event.target.closest("button");
+      if (!target) return;
+      if (target.hasAttribute("data-close-drawer")) return closeDrawer();
+      try {
+        if (target.dataset.taskStatus) {
+          const response = await request(`/tasks/${state.task.ID}/status`, {method:"PUT", body:JSON.stringify({status:target.dataset.taskStatus})});
+          state.task = response.task; state.tasks = state.tasks.map(t => t.ID === state.task.ID ? state.task : t);
+          toast("任务状态已推进"); taskForm(state.task); return;
+        }
+        if (target.dataset.removeMember) {
+          const scope = target.dataset.scope; const entity = scope === "team" ? state.team : state.project;
+          if (!await confirmAction("确认移除该成员？")) return;
+          await request(`/${scope === "team" ? "teams" : "projects"}/${entity.ID}/members/${target.dataset.removeMember}`, {method:"DELETE"});
+          toast("成员已移除");
+          if (scope === "team") await selectTeam(entity.ID, false); else await selectProject(entity.ID, state.view);
+          memberManager(scope); return;
+        }
+        if (target.dataset.leave) {
+          const scope = target.dataset.leave; const entity = scope === "team" ? state.team : state.project;
+          if (!await confirmAction(`确认离开${scope === "team" ? "团队" : "项目"}？`)) return;
+          await request(`/${scope === "team" ? "teams" : "projects"}/${entity.ID}/members/me`, {method:"DELETE"});
+          toast("已退出");
+          closeDrawer();
+          if (scope === "team") { state.team = null; state.project = null; await loadTeams(1); navigate("teams"); }
+          else { state.project = null; await selectTeam(state.team.ID, false); navigate("projects"); }
+          return;
+        }
+        if (target.dataset.action === "delete-team") {
+          if (!await confirmAction("确认永久解散这个团队？")) return;
+          await request(`/teams/${state.team.ID}`, {method:"DELETE"});
+          toast("团队已解散"); closeDrawer(); state.team = null; state.project = null; await loadTeams(1); navigate("teams"); return;
+        }
+        if (target.dataset.action === "delete-project") {
+          if (!await confirmAction("确认删除这个项目？")) return;
+          await request(`/projects/${state.project.ID}`, {method:"DELETE"});
+          toast("项目已删除"); closeDrawer(); state.project = null; await selectTeam(state.team.ID, false); navigate("projects"); return;
+        }
+        if (target.dataset.action === "delete-task") {
+          if (!await confirmAction("确认删除这条任务？")) return;
+          await request(`/tasks/${state.task.ID}`, {method:"DELETE"});
+          state.tasks = state.tasks.filter(t => t.ID !== state.task.ID); state.task = null;
+          toast("任务已删除"); closeDrawer(); render();
+        }
+      } catch (error) { toast("操作未完成", error.message, "error"); }
+    }
+
+    function closeMobile() { $("#sidebar").classList.remove("open"); }
+    function logout(notify = true) {
+      state.token = ""; localStorage.removeItem(TOKEN_KEY);
+      Object.assign(state, {profile:null,teams:[],projects:[],tasks:[],team:null,project:null,task:null,stats:null});
+      closeDrawer(); closeMobile(); showAuth();
+      if (notify) toast("已安全退出");
+    }
+
+    $$(".auth-tab").forEach(button => button.addEventListener("click", () => showAuth(button.dataset.authTab)));
+    $("#login-form").addEventListener("submit", async event => {
+      event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+      try {
+        const payload = Object.fromEntries(new FormData(form));
+        const response = await request("/auth/login", {method:"POST", body:JSON.stringify(payload)});
+        state.token = response.data.token; localStorage.setItem(TOKEN_KEY, state.token);
+        toast("登录成功", `欢迎回来，${response.data.user?.username || payload.username}`);
+        await bootstrap();
+      } catch (error) { toast("登录失败", error.message, "error"); } finally { setBusy(form, false); }
+    });
+    $("#register-form").addEventListener("submit", async event => {
+      event.preventDefault(); const form = event.currentTarget; setBusy(form, true);
+      try {
+        const payload = Object.fromEntries(new FormData(form));
+        await request("/auth/register", {method:"POST", body:JSON.stringify(payload)});
+        toast("账号创建成功", "现在可以使用新账号登录。"); $("#login-username").value = payload.username;
+        showAuth("login"); form.reset();
+      } catch (error) { toast("注册失败", error.message, "error"); } finally { setBusy(form, false); }
+    });
+    $$(".nav-button").forEach(button => button.addEventListener("click", () => navigate(button.dataset.view)));
+    $("#sidebar-teams").addEventListener("click", event => { const button = event.target.closest("[data-team-id]"); if (button) selectTeam(Number(button.dataset.teamId)); });
+    $("#sidebar-projects").addEventListener("click", event => { const button = event.target.closest("[data-project-id]"); if (button) selectProject(Number(button.dataset.projectId)); });
+    $("#logout-button").addEventListener("click", () => logout());
+    $("#mobile-menu").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
+    $("#drawer").addEventListener("submit", handleDrawerSubmit);
+    $("#drawer").addEventListener("click", handleDrawerClick);
+    document.addEventListener("keydown", event => { if (event.key === "Escape") { closeDrawer(); closeMobile(); } });
+    bootstrap();
+  </script>
+</body>
+</html>
