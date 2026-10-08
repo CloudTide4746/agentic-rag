@@ -79,6 +79,19 @@ TeamFlow/
 
 ## 本地运行
 
+### Swagger 接口文档
+
+启动服务后打开 `http://localhost:8080/swagger/index.html`。Swagger JSON 由 `swag` 从 Gin 控制器注释生成，提交在 `docs/swagger.json`，路由直接使用 `swaggo` 注册的文档，避免从进程工作目录读取静态文件。
+
+安装锁定版本的生成器并导出 JSON/YAML：
+
+```powershell
+go install github.com/swaggo/swag/cmd/swag@v1.16.6
+./scripts/generate-swagger.ps1
+```
+
+`docs/swagger.json` 和 `docs/swagger.yaml` 是生成产物；API 变更时同时更新控制器注释并重新生成。
+
 ### 1. 环境要求
 
 - Go `1.26.4`（以 [`go.mod`](./go.mod) 为准）

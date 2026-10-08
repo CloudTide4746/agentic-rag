@@ -23,6 +23,17 @@ type createCommentRequest struct {
 }
 
 // CreateCommentController POST /tasks/:id/comments
+// @Summary CreateCommentController
+// @Description POST /tasks/{id}/comments
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request body createCommentRequest true "Request body"
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/comments [post]
 func (h *CommentController) CreateCommentController(c *gin.Context) {
 	taskID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -53,6 +64,16 @@ func (h *CommentController) CreateCommentController(c *gin.Context) {
 }
 
 // GetCommentsController GET /tasks/:id/comments
+// @Summary GetCommentsController
+// @Description GET /tasks/{id}/comments
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/comments [get]
 func (h *CommentController) GetCommentsController(c *gin.Context) {
 	taskID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -73,6 +94,17 @@ func (h *CommentController) GetCommentsController(c *gin.Context) {
 }
 
 // DeleteCommentController DELETE /tasks/:id/comments/:commentId
+// @Summary DeleteCommentController
+// @Description DELETE /tasks/{id}/comments/{commentId}
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Param commentId path string true "commentId ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/comments/{commentId} [delete]
 func (h *CommentController) DeleteCommentController(c *gin.Context) {
 	commentID, err := strconv.ParseUint(c.Param("commentId"), 10, 64)
 	if err != nil {

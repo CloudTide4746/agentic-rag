@@ -47,7 +47,7 @@ func (r *taskRepository) UpdateFieldsTx(tx *gorm.DB, id uint, version int, updat
 	updates["version"] = gorm.Expr("version + 1")
 	result := tx.Model(&model.Task{}).
 		Where("id = ? AND version = ?", id, version).
-		Updates(updates)
+		Updates(updates)	
 	if result.Error != nil {
 		return false, result.Error
 	}

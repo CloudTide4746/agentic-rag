@@ -27,6 +27,16 @@ type CreateTaskRequest struct {
 	DueDate     *time.Time         `json:"due_date"`
 }
 
+// @Summary CreateTask
+// @Description POST /tasks
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request body CreateTaskRequest true "Request body"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks [post]
 func (c *TaskController) CreateTask(ctx *gin.Context) {
 	var req CreateTaskRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -48,6 +58,16 @@ func (c *TaskController) CreateTask(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"task": task})
 }
 
+// @Summary GetTaskDetail
+// @Description GET /tasks/{id}
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id} [get]
 func (c *TaskController) GetTaskDetail(ctx *gin.Context) {
 	taskID, ok := parseID(ctx, "id")
 	if !ok {
@@ -68,6 +88,17 @@ type UpdateTaskRequest struct {
 	DueDate     *time.Time          `json:"due_date"`
 }
 
+// @Summary UpdateTask
+// @Description PUT /tasks/{id}
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request body UpdateTaskRequest true "Request body"
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id} [put]
 func (c *TaskController) UpdateTask(ctx *gin.Context) {
 	taskID, ok := parseID(ctx, "id")
 	if !ok {
@@ -91,6 +122,16 @@ func (c *TaskController) UpdateTask(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"task": task})
 }
 
+// @Summary DeleteTask
+// @Description DELETE /tasks/{id}
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id} [delete]
 func (c *TaskController) DeleteTask(ctx *gin.Context) {
 	taskID, ok := parseID(ctx, "id")
 	if !ok {
@@ -109,6 +150,16 @@ type ListTaskRequest struct {
 	Size      int  `form:"size,default=10" binding:"omitempty,min=1,max=100"`
 }
 
+// @Summary GetTaskList
+// @Description GET /tasks
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request query ListTaskRequest false "Query filters"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks [get]
 func (c *TaskController) GetTaskList(ctx *gin.Context) {
 	var req ListTaskRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
@@ -137,6 +188,17 @@ type ChangeTaskStatusRequest struct {
 	Status model.TaskStatus `json:"status" binding:"required,oneof=todo in_progress review done"`
 }
 
+// @Summary ChangeTaskStatus
+// @Description PUT /tasks/{id}/status
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request body ChangeTaskStatusRequest true "Request body"
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/status [put]
 func (c *TaskController) ChangeTaskStatus(ctx *gin.Context) {
 	taskID, ok := parseID(ctx, "id")
 	if !ok {
@@ -155,6 +217,17 @@ func (c *TaskController) ChangeTaskStatus(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"task": task})
 }
 
+// @Summary AssignTask
+// @Description PATCH /tasks/{id}/assignee
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request body dto.AssignTaskRequest true "Request body"
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/assignee [patch]
 func (c *TaskController) AssignTask(ctx *gin.Context) {
 	taskID, ok := parseID(ctx, "id")
 	if !ok {

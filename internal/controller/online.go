@@ -17,6 +17,15 @@ func NewOnlineController(onlineSvc *service.OnlineService) *OnlineController {
 }
 
 // GetOnlineUsers 获取当前在线用户列表。
+// @Summary GetOnlineUsers
+// @Description GET /online/users
+// @Tags online
+// @Accept json
+// @Produce json
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /online/users [get]
 func (c *OnlineController) GetOnlineUsers(ctx *gin.Context) {
 	onlineUsers, err := c.onlineSvc.GetOnlineUsers(ctx)
 	if err != nil {
@@ -27,6 +36,16 @@ func (c *OnlineController) GetOnlineUsers(ctx *gin.Context) {
 }
 
 // AddUserToOnline 添加用户到在线列表。
+// @Summary AddUserToOnline
+// @Description POST /online/users/{userId}
+// @Tags online
+// @Accept json
+// @Produce json
+// @Param userId path string true "userId ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /online/users/{userId} [post]
 func (c *OnlineController) AddUserToOnline(ctx *gin.Context) {
 	userID, ok := parseID(ctx, "userId")
 	if !ok {
@@ -40,6 +59,16 @@ func (c *OnlineController) AddUserToOnline(ctx *gin.Context) {
 }
 
 // RemoveUserFromOnline 从在线列表移除用户。
+// @Summary RemoveUserFromOnline
+// @Description DELETE /online/users/{userId}
+// @Tags online
+// @Accept json
+// @Produce json
+// @Param userId path string true "userId ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /online/users/{userId} [delete]
 func (c *OnlineController) RemoveUserFromOnline(ctx *gin.Context) {
 	userID, ok := parseID(ctx, "userId")
 	if !ok {

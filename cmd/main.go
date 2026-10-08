@@ -1,3 +1,13 @@
+// @title TeamFlow API
+// @version 1.0
+// @description TeamFlow 协作平台后端接口。
+// @BasePath /api/v1
+// @host localhost:8080
+// @schemes http https
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description 输入 Bearer <JWT>。
 package main
 
 import (

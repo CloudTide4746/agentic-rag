@@ -18,6 +18,17 @@ func NewAttachmentController(attachmentSvc service.AttachmentServiceInterface) *
 }
 
 // UploadAttachment 上传附件
+// @Summary UploadAttachment
+// @Description POST /tasks/{id}/attachments
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Param file formData file true "上传文件"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/attachments [post]
 func (h *AttachmentController) UploadAttachment(ctx *gin.Context) {
 	taskID, err := strconv.ParseUint(ctx.Param("taskID"), 10, 64)
 	if err != nil {
@@ -43,6 +54,16 @@ func (h *AttachmentController) UploadAttachment(ctx *gin.Context) {
 }
 
 // GetAttachments 获取任务下的所有附件
+// @Summary GetAttachments
+// @Description GET /tasks/{id}/attachments
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/attachments [get]
 func (h *AttachmentController) GetAttachments(ctx *gin.Context) {
 	taskID, err := strconv.ParseUint(ctx.Param("taskID"), 10, 64)
 	if err != nil {
@@ -59,6 +80,16 @@ func (h *AttachmentController) GetAttachments(ctx *gin.Context) {
 }
 
 // DeleteAttachmentHandler DELETE /attachments/:id
+// @Summary DeleteAttachmentHandler
+// @Description DELETE /attachments/{id}
+// @Tags attachments
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /attachments/{id} [delete]
 func (h *AttachmentController) DeleteAttachmentHandler(c *gin.Context) {
 	attachmentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -86,6 +117,16 @@ func (h *AttachmentController) DeleteAttachmentHandler(c *gin.Context) {
 
 // DownloadAttachmentHandler GET /attachments/:id/download
 // 使用 Content-Disposition: attachment 触发浏览器下载，并以原始文件名命名
+// @Summary DownloadAttachmentHandler
+// @Description GET /attachments/{id}/download
+// @Tags attachments
+// @Accept json
+// @Produce json
+// @Param id path string true "id ID"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse
+// @Security BearerAuth
+// @Router /attachments/{id}/download [get]
 func (h *AttachmentController) DownloadAttachmentHandler(c *gin.Context) {
 	attachmentID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
