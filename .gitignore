@@ -15,11 +15,22 @@ venv/
 .venv/
 backend/data/
 
+# Local Elasticsearch distribution and Vite cache
+/elasticsearch-*/
+**/.vite-cache/
+
+# Local knowledge-base samples and database exports
+/test_docs/
+/agentic_rag.sql
+
 # Local configuration and diagnostics. Keep documented templates trackable.
 .env
 .env.*
 !.env.example
 *.log
+
+# User-specific editor settings
+/.claude/settings.local.json
 
 # Historical material is deliberately local-only.
 archive/

@@ -55,7 +55,7 @@ API: transport(handler) -> application(service/use-case) -> domain
 ### 2.4 浏览器安全与可访问性
 
 - MUST 把前端当作不可信客户端；权限判断、对象归属、字段级授权和 Agent `kb_ids` 均由后端执行。OWASP API Security 强调对象级授权风险：[API Security Top 10](https://owasp.org/API-Security/editions/2023/en/0x11-t10/)。
-- MUST 禁止将访问令牌、刷新令牌、密钥或敏感文档写入 localStorage、日志、埋点、URL；刷新凭据使用符合部署模型的 Secure/HttpOnly/SameSite Cookie。
+- MUST 禁止将访问令牌、刷新令牌、密钥或敏感文档写入 localStorage、日志、埋点、URL。若后续设计刷新凭据，必须另行决策并使用符合部署模型的 Secure/HttpOnly/SameSite Cookie；首版令牌仅存内存，刷新要求重新登录。
 - MUST 禁止未经净化的 HTML；Markdown 渲染采用允许列表，外链设置安全属性，CSP 禁止 `unsafe-inline`/`unsafe-eval`（确需例外须威胁建模）。参考 [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html) 与 [Content Security Policy Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)。
 - MUST 对所有交互控件提供语义元素、键盘操作、可见焦点、可访问名称和错误关联；目标采用 [WCAG 2.2](https://www.w3.org/TR/WCAG22/) AA。
 - MUST 为页面/组件实现 loading、empty、error、disabled 和 retry 状态；错误边界不得泄露堆栈、令牌或响应正文。

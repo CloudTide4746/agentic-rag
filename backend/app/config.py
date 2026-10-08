@@ -32,9 +32,12 @@ class Settings(BaseSettings):
     mysql_db: str = "agentic_rag"
 
     # Elasticsearch 8.x/9.x
-    es_url: str = "http://localhost:9200"
+    es_url: str = "https://localhost:9200"
     es_user: str = "elastic"
     es_password: str = ""
+    # HTTPS deployments should point this at Elasticsearch's CA certificate.
+    # An empty value enables local auto-discovery for the bundled distribution.
+    es_ca_cert: str = ""
 
     # 应用
     data_dir: str = "data"

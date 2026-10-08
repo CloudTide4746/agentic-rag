@@ -1,0 +1,407 @@
+openapi: 3.1.0
+info:
+  title: Agentic-RAG Web 与 Python Agent API
+  version: 0.1.0
+  description: >-
+    当前 React Web 调用的 FastAPI 接口契约。路径和字段以 apps/web/src/lib/api 为准。
+    本契约记录现状；Go /api/v1 规划接口仍未实现。
+servers:
+  - url: http://localhost:8000
+    description: 本地 Python FastAPI（开发代理目标）
+tags:
+  - name: Chat
+  - name: Knowledge bases
+  - name: Datasources
+  - name: Decision logs
+  - name: Retrieval playground
+paths:
+  /api/chat/sessions:
+    get:
+      tags: [Chat]
+      summary: List chat sessions
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ChatSession'}
+    post:
+      tags: [Chat]
+      summary: Create chat session
+      responses:
+        '200':
+          description: Created session
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatSession'}
+  /api/chat/sessions/{session_id}:
+    parameters:
+      - $ref: '#/components/parameters/sessionId'
+    delete:
+      tags: [Chat]
+      summary: Delete chat session
+      responses:
+        '200': {description: Session deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/chat/sessions/{session_id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/sessionId'
+    get:
+      tags: [Chat]
+      summary: List messages in a session
+      responses:
+        '200':
+          description: Message history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ChatMessage'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/chat/sessions/{session_id}/last-assistant:
+    parameters:
+      - $ref: '#/components/parameters/sessionId'
+    delete:
+      tags: [Chat]
+      summary: Purge latest assistant answer before regeneration
+      responses:
+        '200': {description: Latest assistant answer removed}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/chat/sessions/{session_id}/ask:
+    parameters:
+      - $ref: '#/components/parameters/sessionId'
+    post:
+      tags: [Chat]
+      summary: Ask a question and receive server-sent events
+      description: >-
+        Event names include router, rewrite, retrieve, grade, correct, generate,
+        reflect, citation, done and error. Event data is emitted by the current
+        Agent runtime. An interrupted stream may end without a terminal event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AskRequest'
+      responses:
+        '200':
+          description: Agent event stream
+          content:
+            text/event-stream:
+              schema: {type: string, description: SSE frames (event/data fields)}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Session already has an active run}
+  /api/admin/kb:
+    get:
+      tags: [Knowledge bases]
+      summary: List knowledge bases
+      responses:
+        '200':
+          description: Knowledge bases
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/KnowledgeBase'}
+    post:
+      tags: [Knowledge bases]
+      summary: Create knowledge base
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateKnowledgeBaseRequest'}
+      responses:
+        '200':
+          description: Created knowledge base
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/KnowledgeBase'}
+  /api/admin/kb/{kb_id}/documents:
+    parameters:
+      - $ref: '#/components/parameters/kbId'
+    get:
+      tags: [Knowledge bases]
+      summary: List documents in a knowledge base
+      responses:
+        '200':
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Document'}
+    post:
+      tags: [Knowledge bases]
+      summary: Upload a document for ingestion
+      description: Returns the accepted document and starts asynchronous processing.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '202':
+          description: Upload accepted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Document'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/admin/kb/{kb_id}/documents/{doc_id}:
+    parameters:
+      - $ref: '#/components/parameters/kbId'
+      - $ref: '#/components/parameters/docId'
+    delete:
+      tags: [Knowledge bases]
+      summary: Delete a document
+      responses:
+        '200': {description: Document deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/admin/kb/{kb_id}/documents/{doc_id}/chunks:
+    parameters:
+      - $ref: '#/components/parameters/kbId'
+      - $ref: '#/components/parameters/docId'
+    get:
+      tags: [Knowledge bases]
+      summary: List document chunks
+      parameters:
+        - {name: page, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: page_size, in: query, required: true, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        '200':
+          description: Paginated chunks
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Page'}
+  /api/admin/kb/{kb_id}/documents/{doc_id}/retry:
+    parameters:
+      - $ref: '#/components/parameters/kbId'
+      - $ref: '#/components/parameters/docId'
+    post:
+      tags: [Knowledge bases]
+      summary: Retry document ingestion
+      responses:
+        '200':
+          description: Updated document
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Document'}
+  /api/admin/chunks/by-citation:
+    get:
+      tags: [Knowledge bases]
+      summary: Resolve a citation to its document and chunk
+      parameters:
+        - {name: doc_name, in: query, required: true, schema: {type: string}}
+        - {name: chunk_no, in: query, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: Citation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [doc, chunk]
+                properties:
+                  doc: {$ref: '#/components/schemas/Document'}
+                  chunk: {$ref: '#/components/schemas/Chunk'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/admin/datasources:
+    get:
+      tags: [Datasources]
+      summary: List retrieval datasource configuration
+      responses:
+        '200':
+          description: Datasources
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Datasource'}}
+    put:
+      tags: [Datasources]
+      summary: Replace retrieval datasource configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items: {type: array, items: {$ref: '#/components/schemas/Datasource'}}
+      responses:
+        '200':
+          description: Updated datasource count
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated: {type: integer}
+  /api/admin/decision-logs:
+    get:
+      tags: [Decision logs]
+      summary: Query decision logs
+      parameters:
+        - {name: session_id, in: query, required: false, schema: {type: integer}}
+        - {name: start, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: end, in: query, required: false, schema: {type: string, format: date-time}}
+        - {name: page, in: query, required: true, schema: {type: integer, minimum: 1}}
+        - {name: page_size, in: query, required: true, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        '200':
+          description: Paginated decision logs
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Page'}
+  /api/admin/decision-logs/{log_id}:
+    get:
+      tags: [Decision logs]
+      summary: Get decision log details
+      parameters:
+        - {name: log_id, in: path, required: true, schema: {type: integer}}
+      responses:
+        '200':
+          description: Decision log
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DecisionLog'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/admin/retrieval-test/lane:
+    post:
+      tags: [Retrieval playground]
+      summary: Test one retrieval lane
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RetrievalLaneRequest'}
+      responses:
+        '200':
+          description: Retrieval lane result
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RetrievalLane'}
+  /api/admin/retrieval-test/fuse:
+    post:
+      tags: [Retrieval playground]
+      summary: Fuse retrieval results and grade them
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RetrievalFuseRequest'}
+      responses:
+        '200':
+          description: Fused results and grade
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [fused, grade]
+                properties:
+                  fused: {type: array, items: {$ref: '#/components/schemas/FusedItem'}}
+                  grade: {type: object, additionalProperties: true}
+components:
+  parameters:
+    sessionId: {name: session_id, in: path, required: true, schema: {type: integer}}
+    kbId: {name: kb_id, in: path, required: true, schema: {type: integer}}
+    docId: {name: doc_id, in: path, required: true, schema: {type: integer}}
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Error:
+      type: object
+      properties:
+        detail: {type: string}
+        message: {type: string}
+    ChatSession:
+      type: object
+      additionalProperties: true
+      properties:
+        id: {type: integer}
+        title: {type: string}
+    ChatMessage:
+      type: object
+      additionalProperties: true
+      properties:
+        id: {type: integer}
+        role: {type: string}
+        content: {type: string}
+    AskRequest:
+      type: object
+      required: [question]
+      properties:
+        question: {type: string, minLength: 1}
+        skip_user_persist: {type: boolean, default: false, description: Internal compatibility field currently sent by Web.}
+        images: {type: array, items: {type: string}}
+    KnowledgeBase:
+      type: object
+      additionalProperties: true
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        description: {type: string}
+    CreateKnowledgeBaseRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name: {type: string, minLength: 1}
+        description: {type: string}
+    Document:
+      type: object
+      additionalProperties: true
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        status: {type: string}
+    Chunk:
+      type: object
+      additionalProperties: true
+    Page:
+      type: object
+      additionalProperties: true
+      description: Paginated result matching the current Python DTO.
+    DecisionLog:
+      type: object
+      additionalProperties: true
+    Datasource:
+      type: object
+      additionalProperties: true
+    RetrievalLaneRequest:
+      type: object
+      required: [query, source]
+      properties:
+        query: {type: string}
+        source: {type: string, enum: [vector, keyword, database]}
+        top_k: {type: integer, minimum: 1, default: 5}
+        kb_ids:
+          type: [array, 'null']
+          items: {type: integer}
+    RetrievalLane:
+      type: object
+      additionalProperties: true
+    RetrievalFuseRequest:
+      type: object
+      required: [lanes]
+      properties:
+        query: {type: string, default: ''}
+        lanes: {type: array, items: {$ref: '#/components/schemas/RetrievalLane'}}
+    FusedItem:
+      type: object
+      additionalProperties: true

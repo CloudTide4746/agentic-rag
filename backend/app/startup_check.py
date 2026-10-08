@@ -38,8 +38,13 @@ def _err_message(r: httpx.Response) -> str:
 async def check_es() -> tuple[bool, str]:
     try:
         r = await elastic.client.get("/")
+    except httpx.ConnectError as e:
+        return False, (
+            f"连接失败（{type(e).__name__}）— 请确认 ES_URL 使用正确协议（当前：{settings.es_url}）、"
+            "端口可访问且 ES_CA_CERT 指向正确 CA"
+        )
     except httpx.HTTPError as e:
-        return False, f"连接失败（{type(e).__name__}）— 请确认 Elasticsearch 已启动：{settings.es_url}"
+        return False, f"请求失败（{type(e).__name__}）— 请检查 Elasticsearch 配置：{settings.es_url}"
     if r.status_code == 200:
         return True, f"连接正常（{settings.es_url}）"
     if r.status_code == 401:

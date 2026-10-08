@@ -12,3 +12,15 @@ it('makes a failed connection visible to the user', async () => {
   expect((await screen.findByRole('alert')).textContent).toContain('连接失败')
   client.clear()
 })
+
+it('checks the running Agent API health endpoint', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    status: 'ok', version: '1.0.0', model: 'test-model', mysql: true, elasticsearch: true,
+  })))
+  vi.stubGlobal('fetch', fetchMock)
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={client}><Overview /></QueryClientProvider>)
+  expect(await screen.findByText(/Agent API 已连接/)).toBeTruthy()
+  expect(fetchMock).toHaveBeenCalledWith('/api/health', expect.anything())
+  client.clear()
+})
