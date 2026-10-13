@@ -9,7 +9,6 @@ import (
 
 	"teamflow/internal/faults"
 	"teamflow/internal/task"
-	"teamflow/internal/task/service"
 
 	"gorm.io/gorm"
 )
@@ -32,8 +31,9 @@ type taskRecord struct {
 func (taskRecord) TableName() string { return "tasks" }
 
 type TaskRepository struct{ db *gorm.DB }
-
+// NewTaskRepository 创建任务仓库
 func NewTaskRepository(db *gorm.DB) *TaskRepository { return &TaskRepository{db: db} }
+// Create 创建任务
 func (r *TaskRepository) Create(ctx context.Context, item task.Task) (*task.Task, error) {
 	pid, _ := strconv.ParseUint(item.ProjectID, 10, 64)
 	cid, _ := strconv.ParseUint(item.CreatorID, 10, 64)
@@ -42,7 +42,8 @@ func (r *TaskRepository) Create(ctx context.Context, item task.Task) (*task.Task
 		return nil, fmt.Errorf("create task: %w", err)
 	}
 	return toTask(&row), nil
-}
+}	
+// ListByProject 获取项目任务列表
 func (r *TaskRepository) ListByProject(ctx context.Context, projectID uint, page, size int) ([]task.Task, int64, error) {
 	q := r.db.WithContext(ctx).Model(&taskRecord{}).Where("project_id = ?", projectID)
 	var total int64
@@ -59,6 +60,7 @@ func (r *TaskRepository) ListByProject(ctx context.Context, projectID uint, page
 	}
 	return items, total, nil
 }
+// Get 获取任务
 func (r *TaskRepository) Get(ctx context.Context, id uint) (*task.Task, error) {
 	var row taskRecord
 	err := r.db.WithContext(ctx).First(&row, id).Error
@@ -70,6 +72,7 @@ func (r *TaskRepository) Get(ctx context.Context, id uint) (*task.Task, error) {
 	}
 	return toTask(&row), nil
 }
+// Update 更新任务
 func (r *TaskRepository) Update(ctx context.Context, id uint, expectedVersion int, fields map[string]any) (*task.Task, error) {
 	var current taskRecord
 	if err := r.db.WithContext(ctx).First(&current, id).Error; err != nil {
@@ -91,6 +94,7 @@ func (r *TaskRepository) Update(ctx context.Context, id uint, expectedVersion in
 	}
 	return r.Get(ctx, id)
 }
+// Delete 删除任务
 func (r *TaskRepository) Delete(ctx context.Context, id uint) error {
 	res := r.db.WithContext(ctx).Delete(&taskRecord{}, id)
 	if res.Error != nil {
@@ -101,6 +105,7 @@ func (r *TaskRepository) Delete(ctx context.Context, id uint) error {
 	}
 	return nil
 }
+// toTask 转换任务记录为任务
 func toTask(row *taskRecord) *task.Task {
 	var assignee *string
 	if row.AssigneeID != nil {
@@ -114,5 +119,3 @@ func toTask(row *taskRecord) *task.Task {
 	}
 	return &task.Task{ID: strconv.FormatUint(uint64(row.ID), 10), Title: row.Title, Description: row.Description, ProjectID: strconv.FormatUint(uint64(row.ProjectID), 10), AssigneeID: assignee, CreatorID: strconv.FormatUint(uint64(row.CreatorID), 10), Status: row.Status, Priority: row.Priority, DueDate: dueDate, Version: row.Version, CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()}
 }
-
-var _ service.Repository = (*TaskRepository)(nil)
