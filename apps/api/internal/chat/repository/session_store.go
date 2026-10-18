@@ -29,13 +29,14 @@ type sessionRecord struct {
 
 func (sessionRecord) TableName() string { return "chat_platform_sessions" }
 
-// SessionStore owns the platform-side mapping table. It never touches the
-// Agent's chat_session / chat_message tables (ADR-0003).
-type SessionStore struct{ db *gorm.DB }
+// SessionRepository 作用是管理聊天会话映射的数据库操作,相当于repository层
+type SessionRepository struct{ db *gorm.DB }
 
-func NewSessionStore(db *gorm.DB) *SessionStore { return &SessionStore{db: db} }
+// NewSessionRepository 创建一个新的 SessionRepository 实例
+func NewSessionRepository(db *gorm.DB) *SessionRepository { return &SessionRepository{db: db} }
 
-func (s *SessionStore) Create(ctx context.Context, item chat.Session, idempotencyKey string) (*chat.Session, error) {
+// Create 作用是创建一个新的聊天会话映射,并返回该映射
+func (s *SessionRepository) Create(ctx context.Context, item chat.Session, idempotencyKey string) (*chat.Session, error) {
 	row := sessionRecord{
 		PublicID:       item.PublicID,
 		OwnerID:        parseID(item.OwnerID),
@@ -49,9 +50,8 @@ func (s *SessionStore) Create(ctx context.Context, item chat.Session, idempotenc
 	return toSession(&row), nil
 }
 
-// GetByPublicID returns the mapping only when it belongs to ownerID, so a
-// caller can never reach another user's session by guessing its public id.
-func (s *SessionStore) GetByPublicID(ctx context.Context, publicID string, ownerID uint) (*chat.Session, error) {
+// GetByPublicID 作用是根据 publicID 获取 session 映射,检查 ownerID
+func (s *SessionRepository) GetByPublicID(ctx context.Context, publicID string, ownerID uint) (*chat.Session, error) {
 	var row sessionRecord
 	err := s.db.WithContext(ctx).Where("public_id = ? AND owner_id = ?", publicID, ownerID).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -63,9 +63,8 @@ func (s *SessionStore) GetByPublicID(ctx context.Context, publicID string, owner
 	return toSession(&row), nil
 }
 
-// getByPublicID reads a mapping without an owner filter. It is unexported so
-// the authorization-scoped read stays the only public entry point.
-func (s *SessionStore) getByPublicID(ctx context.Context, publicID string) (*chat.Session, error) {
+// getByPublicID 作用是根据 publicID 获取 session 映射,不检查 ownerID
+func (s *SessionRepository) getByPublicID(ctx context.Context, publicID string) (*chat.Session, error) {
 	var row sessionRecord
 	err := s.db.WithContext(ctx).Where("public_id = ?", publicID).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -77,7 +76,8 @@ func (s *SessionStore) getByPublicID(ctx context.Context, publicID string) (*cha
 	return toSession(&row), nil
 }
 
-func (s *SessionStore) ListByOwner(ctx context.Context, ownerID uint, page, size int) ([]chat.Session, int64, error) {
+// ListByOwner 作用是根据 ownerID 列出所有 session 映射,此处的ownerID 是用户ID,在表中是 owner_id 字段的值
+func (s *SessionRepository) ListByOwner(ctx context.Context, ownerID uint, page, size int) ([]chat.Session, int64, error) {
 	q := s.db.WithContext(ctx).Model(&sessionRecord{}).Where("owner_id = ?", ownerID)
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
@@ -94,9 +94,8 @@ func (s *SessionStore) ListByOwner(ctx context.Context, ownerID uint, page, size
 	return items, total, nil
 }
 
-// MarkActive records a confirmed Agent session id after creation succeeded and
-// returns the updated mapping so the caller can report the committed state.
-func (s *SessionStore) MarkActive(ctx context.Context, publicID, agentSessionID string) (*chat.Session, error) {
+// MarkActive 作用是将 session 状态标记为 active 并记录 agent_session_id
+func (s *SessionRepository) MarkActive(ctx context.Context, publicID, agentSessionID string) (*chat.Session, error) {
 	res := s.db.WithContext(ctx).Model(&sessionRecord{}).
 		Where("public_id = ?", publicID).
 		Updates(map[string]any{
@@ -114,9 +113,9 @@ func (s *SessionStore) MarkActive(ctx context.Context, publicID, agentSessionID 
 	return s.getByPublicID(ctx, publicID)
 }
 
-// MarkFailed records an explicit Agent rejection. The mapping is kept so the
-// caller can inspect or retry it instead of silently losing the attempt.
-func (s *SessionStore) MarkFailed(ctx context.Context, publicID, errorCode string) error {
+// MarkFailed 作用是将 session 状态标记为 failed 并记录错误码
+// Mark的意思是标记, 用于记录 session 创建失败的原因
+func (s *SessionRepository) MarkFailed(ctx context.Context, publicID, errorCode string) error {
 	res := s.db.WithContext(ctx).Model(&sessionRecord{}).
 		Where("public_id = ?", publicID).
 		Updates(map[string]any{"status": chat.StatusFailed, "last_error_code": errorCode})
@@ -129,10 +128,8 @@ func (s *SessionStore) MarkFailed(ctx context.Context, publicID, errorCode strin
 	return nil
 }
 
-// MarkPending records an unknown creation outcome (timeout or lost response).
-// The record is reconciled later by idempotency key; it is never retried
-// blindly, because that could create a second Agent session (ADR-0003).
-func (s *SessionStore) MarkPending(ctx context.Context, publicID, errorCode string) error {
+// MarkPending 作用是将 session 状态标记为 pending 并记录错误码
+func (s *SessionRepository) MarkPending(ctx context.Context, publicID, errorCode string) error {
 	res := s.db.WithContext(ctx).Model(&sessionRecord{}).
 		Where("public_id = ?", publicID).
 		Updates(map[string]any{"status": chat.StatusPending, "last_error_code": errorCode})
@@ -144,7 +141,7 @@ func (s *SessionStore) MarkPending(ctx context.Context, publicID, errorCode stri
 	}
 	return nil
 }
-
+// toSession 作用是将 sessionRecord 转换为 chat.Session
 func toSession(row *sessionRecord) *chat.Session {
 	item := &chat.Session{
 		PublicID:  row.PublicID,

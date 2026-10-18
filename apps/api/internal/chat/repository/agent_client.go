@@ -156,8 +156,7 @@ func (c *AgentClient) GetMessages(ctx context.Context, agentSessionID string) ([
 	return messages, nil
 }
 
-// StartRun opens the Agent SSE stream. The caller owns the returned body and
-// must close it; cancellation propagates to the Agent through ctx.
+// StartRun 作用是打开与 Agent 的 SSE 流,并返回一个可读取的流
 func (c *AgentClient) StartRun(ctx context.Context, agentSessionID string, req AgentRunRequest) (io.ReadCloser, error) {
 	endpoint, err := c.endpoint("sessions", agentSessionID, "ask")
 	if err != nil {
@@ -194,12 +193,14 @@ func (c *AgentClient) StartRun(ctx context.Context, agentSessionID string, req A
 	return response.Body, nil
 }
 
+// DeleteSession 作用是删除指定的 Agent 会话
 func (c *AgentClient) DeleteSession(ctx context.Context, agentSessionID string) error {
 	endpoint, err := c.endpoint("sessions", agentSessionID)
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
+	// 创建一个 DELETE 请求,用于删除指定的 Agent 会话
+		request, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("create agent delete request: %w", err)
 	}
@@ -231,6 +232,7 @@ func (c *AgentClient) endpoint(segments ...string) (string, error) {
 	return endpoint, nil
 }
 
+// do 作用是执行 HTTP 请求,并返回响应
 func (c *AgentClient) do(request *http.Request) (*http.Response, error) {
 	request.Header.Set("X-Agent-Token", c.token)
 	response, err := c.client.Do(request)
@@ -240,6 +242,7 @@ func (c *AgentClient) do(request *http.Request) (*http.Response, error) {
 	return response, nil
 }
 
+// classify 作用是将 HTTP 响应转换为错误
 func classify(response *http.Response) error {
 	switch {
 	case response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices:

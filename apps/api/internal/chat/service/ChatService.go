@@ -26,8 +26,8 @@ const (
 	maxImages = 4
 )
 
-// SessionStore is the platform-owned mapping table port.
-type SessionStore interface {
+// SessionRepository is the platform-owned mapping table port.
+type SessionRepository interface {
 	Create(context.Context, chat.Session, string) (*chat.Session, error)
 	GetByPublicID(context.Context, string, uint) (*chat.Session, error)
 	ListByOwner(context.Context, uint, int, int) ([]chat.Session, int64, error)
@@ -44,19 +44,17 @@ type AgentClient interface {
 }
 
 type ChatService struct {
-	sessions SessionStore
+	sessions SessionRepository
 	agent    AgentClient
 }
 
 var _ handler.ChatHandler = (*ChatService)(nil)
 
-func NewChatService(sessions SessionStore, agent AgentClient) *ChatService {
+func NewChatService(sessions SessionRepository, agent AgentClient) *ChatService {		
 	return &ChatService{sessions: sessions, agent: agent}
 }
 
-// CreateChat creates the platform mapping first, then the Agent session, so a
-// confirmed Agent session is never left without platform ownership
-// (ADR-0003 "创建会话流程").
+// CreateChat 作用是创建一个新的会话
 func (s *ChatService) CreateChat(ctx context.Context, req *handler.CreateChatReq) (*handler.CreateChatResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -98,7 +96,7 @@ func (s *ChatService) CreateChat(ctx context.Context, req *handler.CreateChatReq
 	return &handler.CreateChatResp{Session: *activated}, nil
 }
 
-// GetChat returns one owned session and its Agent-owned message history.
+// GetChat 作用是获取指定的会话和其所属的消息历史记录
 func (s *ChatService) GetChat(ctx context.Context, req *handler.GetChatReq) (*handler.GetChatResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -122,7 +120,7 @@ func (s *ChatService) GetChat(ctx context.Context, req *handler.GetChatReq) (*ha
 	return &handler.GetChatResp{Session: *session, Messages: messages}, nil
 }
 
-// ListSessions returns the caller's own sessions, newest first.
+// ListSessions 作用是获取当前用户的所有会话,按创建时间排序
 func (s *ChatService) ListSessions(ctx context.Context, req *handler.ListSessionsReq) (*handler.ListSessionsResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -138,9 +136,7 @@ func (s *ChatService) ListSessions(ctx context.Context, req *handler.ListSession
 	return &handler.ListSessionsResp{Items: items, Total: total, Page: page, PageSize: size}, nil
 }
 
-// Ask starts a question run and hands the Agent's SSE stream back to the HTTP
-// layer untouched. Validation and ownership happen before the stream opens, so
-// a rejected request never emits a partial stream.
+// Ask 作用是启动一个问题运行,并返回一个可读取的流
 func (s *ChatService) Ask(ctx context.Context, req *handler.AskReq) (*handler.AskStream, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -173,8 +169,7 @@ func (s *ChatService) Ask(ctx context.Context, req *handler.AskReq) (*handler.As
 	return &handler.AskStream{ContentType: "text/event-stream", Body: body}, nil
 }
 
-// requireSession resolves a public id to an owned mapping. A session owned by
-// someone else is reported as not found to avoid leaking its existence.
+// requireSession 作用是根据会话 ID 和所有者 ID 获取会话
 func (s *ChatService) requireSession(ctx context.Context, publicID string, ownerID uint) (*chat.Session, error) {
 	if strings.TrimSpace(publicID) == "" {
 		return nil, fmt.Errorf("session id is required: %w", faults.ErrValidation)
@@ -182,11 +177,7 @@ func (s *ChatService) requireSession(ctx context.Context, publicID string, owner
 	return s.sessions.GetByPublicID(ctx, publicID, ownerID)
 }
 
-// recordCreationFailure persists the lifecycle outcome of a failed Agent
-// creation. A timeout or a lost response has an unknown outcome, so it becomes
-// pending for later reconciliation; retrying it here could create a second
-// Agent session (ADR-0003). A dial failure or an explicit rejection is a known
-// failure and is terminal.
+// recordCreationFailure 作用是记录 Agent 会话创建失败的生命周期结果
 func (s *ChatService) recordCreationFailure(ctx context.Context, publicID string, cause error) {
 	code := "AGENT_UNAVAILABLE"
 	switch {
@@ -208,6 +199,7 @@ func (s *ChatService) recordCreationFailure(ctx context.Context, publicID string
 	_ = s.sessions.MarkFailed(ctx, publicID, code)
 }
 
+// validateKnowledgeBases 作用是验证知识库 ID 是否有效
 func validateKnowledgeBases(ids []string) error {
 	seen := make(map[string]struct{}, len(ids))
 	for _, raw := range ids {
@@ -224,9 +216,7 @@ func validateKnowledgeBases(ids []string) error {
 	return nil
 }
 
-// isUnknownOutcome reports whether a failed Agent creation may still have
-// succeeded upstream. Only provable non-delivery and explicit rejections are
-// safe to treat as terminal failures.
+// isUnknownOutcome 作用是判断 Agent 会话创建失败是否是未知结果
 func isUnknownOutcome(err error) bool {
 	return errors.Is(err, repository.ErrAgentTimeout) || errors.Is(err, repository.ErrAgentUnavailable)
 }
@@ -247,7 +237,7 @@ func normalizePage(page, size int) (int, int) {
 	return page, size
 }
 
-// newPublicID returns an opaque, unguessable platform identifier.
+// newPublicID 作用是生成一个唯一的会话 ID
 func newPublicID() (string, error) {
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
