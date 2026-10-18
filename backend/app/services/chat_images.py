@@ -3,7 +3,7 @@
 图片统一存于 data/uploads/chat_images/{uuid}.{ext}，chat_message.images 存站内 URL 数组；
 AskRequest.images 接受两种形式：
 - data URL：data:image/png;base64,…（新上传，前端已压缩）
-- 站内 URL：/api/chat/images/{name}（重新生成场景复用已落盘图片）
+- 站内 URL：/internal/rag/chat/images/{name}（重新生成场景复用已落盘图片）
 """
 import base64
 import binascii
@@ -14,7 +14,7 @@ from pathlib import Path
 from ..config import UPLOAD_DIR, settings
 
 CHAT_IMAGE_DIR = UPLOAD_DIR / "chat_images"
-CHAT_IMAGE_URL_PREFIX = "/api/chat/images/"
+CHAT_IMAGE_URL_PREFIX = "/internal/rag/chat/images/"
 
 # MIME 白名单 → 落盘扩展名
 ALLOWED_MIME: dict[str, str] = {

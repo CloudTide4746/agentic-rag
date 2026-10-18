@@ -1,37 +1,65 @@
-package chat
+package handler
 
-import "context"
+import (
+	"context"
+	"io"
 
+	"teamflow/internal/chat"
+)
 
 type CreateChatReq struct {
-
+	ActorID uint   `json:"-"`
+	Title   string `json:"title,omitempty"`
 }
+
 type CreateChatResp struct {
-
+	Session chat.Session `json:"session"`
 }
+
 type GetChatReq struct {
-
+	ActorID   uint   `json:"-"`
+	SessionID string `json:"-"`
 }
+
 type GetChatResp struct {
+	Session  chat.Session   `json:"session"`
+	Messages []chat.Message `json:"messages"`
+}
 
+type ListSessionsReq struct {
+	ActorID  uint `json:"-"`
+	Page     int  `form:"page"`
+	PageSize int  `form:"page_size"`
 }
-type SendMessageReq struct {
 
+type ListSessionsResp struct {
+	Items    []chat.Session `json:"items"`
+	Total    int64          `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
 }
-type SendMessageResp struct {
 
+// AskReq is the body of POST /api/v1/chat/sessions/{id}/runs.
+//
+// skip_user_persist is deliberately absent: whether the Agent persists the
+// user turn is a platform decision, not a browser-controlled flag (ADR-0003).
+type AskReq struct {
+	ActorID        uint     `json:"-"`
+	SessionID      string   `json:"-"`
+	Question       string   `json:"question"`
+	KnowledgeBases []string `json:"knowledge_base_ids,omitempty"`
+	Images         []string `json:"images,omitempty"`
 }
-type GetMessagesReq struct {
 
+// AskStream carries the Agent's SSE frames straight through to the caller.
+type AskStream struct {
+	ContentType string
+	Body        io.ReadCloser
 }
-type GetMessagesResp struct {
 
-}
-type chatHandler struct {
-}
 type ChatHandler interface {
-	CreateChat(ctx context.Context, req *CreateChatReq) (*CreateChatResp, error) //POST /api/chat/sessions
-	GetChat(ctx context.Context, req *GetChatReq) (*GetChatResp, error) //GET /api/chat/sessions/{session_id}/messages
-	SendMessage(ctx context.Context, req *SendMessageReq) (*SendMessageResp, error)  //POST /api/chat/sessions/{session_id}/ask
-	GetMessages(ctx context.Context, req *GetMessagesReq) (*GetMessagesResp, error) //GET /api/chat/sessions
+	CreateChat(ctx context.Context, req *CreateChatReq) (*CreateChatResp, error)
+	GetChat(ctx context.Context, req *GetChatReq) (*GetChatResp, error)
+	ListSessions(ctx context.Context, req *ListSessionsReq) (*ListSessionsResp, error)
+	Ask(ctx context.Context, req *AskReq) (*AskStream, error)
 }

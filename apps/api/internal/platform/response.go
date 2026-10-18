@@ -10,6 +10,8 @@ import (
 
 	"teamflow/internal/faults"
 
+	agentrepo "teamflow/internal/chat/repository"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -107,6 +109,14 @@ func writeError(c *gin.Context, err error) {
 		status, code, message = http.StatusConflict, "CONFLICT", "资源冲突"
 	case errors.Is(err, faults.ErrUnauthenticated):
 		status, code, message = http.StatusUnauthorized, "UNAUTHENTICATED", "请先登录"
+	// Agent runtime failures become stable public codes so the browser never
+	// sees internal Agent detail (ADR-0003 "错误映射").
+	case errors.Is(err, agentrepo.ErrAgentRejected):
+		status, code, message = http.StatusBadGateway, "AGENT_REJECTED", "问答服务拒绝了本次请求"
+	case errors.Is(err, agentrepo.ErrAgentTimeout):
+		status, code, message = http.StatusGatewayTimeout, "AGENT_TIMEOUT", "问答服务响应超时"
+	case errors.Is(err, agentrepo.ErrAgentUnavailable), errors.Is(err, agentrepo.ErrAgentUnreachable):
+		status, code, message = http.StatusServiceUnavailable, "AGENT_UNAVAILABLE", "问答服务暂不可用"
 	}
 	if status >= http.StatusInternalServerError {
 		logger, _ := c.Get("logger")

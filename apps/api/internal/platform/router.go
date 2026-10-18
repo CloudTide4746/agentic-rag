@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,6 +14,9 @@ import (
 	authhandler "teamflow/internal/auth/handler"
 	authrepo "teamflow/internal/auth/repository"
 	authservice "teamflow/internal/auth/service"
+	chathandler "teamflow/internal/chat/handler"
+	chatrepo "teamflow/internal/chat/repository"
+	chatservice "teamflow/internal/chat/service"
 	"teamflow/internal/faults"
 	projecthandler "teamflow/internal/project/handler"
 	projectrepo "teamflow/internal/project/repository"
@@ -73,6 +77,9 @@ func NewRouter(ctx context.Context, logger *zap.Logger) (*gin.Engine, *RouterRes
 	var projects projecthandler.ProjectHandler = projectService
 	taskService := taskservice.NewTaskService(taskrepo.NewTaskRepository(db), projectService)
 	var tasks taskhandler.TaskHandler = taskService
+	// The chat module owns the platform session mapping only; Agent-owned
+	// conversation data stays behind AgentClient (ADR-0003).
+	var chats chathandler.ChatHandler = chatservice.NewChatService(chatrepo.NewSessionStore(db), chatrepo.NewAgentClient())
 
 	router := gin.New()
 	router.Use(recoveryMiddleware(logger), requestIDMiddleware(logger), jsonBodyLimitMiddleware(1<<20))
@@ -320,6 +327,86 @@ func NewRouter(ctx context.Context, logger *zap.Logger) (*gin.Engine, *RouterRes
 			return
 		}
 		success(c, http.StatusOK, resp)
+	})
+	protected.POST("/chat/sessions", func(c *gin.Context) {
+		var body chathandler.CreateChatReq
+		if err := c.ShouldBindJSON(&body); err != nil {
+			fail(c, http.StatusBadRequest, "INVALID_ARGUMENT", "请求参数无效")
+			return
+		}
+		body.ActorID = actorID(c)
+		resp, err := chats.CreateChat(c.Request.Context(), &body)
+		if err != nil {
+			writeError(c, err)
+			return
+		}
+		success(c, http.StatusCreated, resp)
+	})
+	protected.GET("/chat/sessions", func(c *gin.Context) {
+		page, size, ok := parsePage(c)
+		if !ok {
+			return
+		}
+		resp, err := chats.ListSessions(c.Request.Context(), &chathandler.ListSessionsReq{ActorID: actorID(c), Page: page, PageSize: size})
+		if err != nil {
+			writeError(c, err)
+			return
+		}
+		success(c, http.StatusOK, resp)
+	})
+	protected.GET("/chat/sessions/:id", func(c *gin.Context) {
+		// The public id is an opaque platform string, not a numeric id.
+		resp, err := chats.GetChat(c.Request.Context(), &chathandler.GetChatReq{ActorID: actorID(c), SessionID: c.Param("id")})
+		if err != nil {
+			writeError(c, err)
+			return
+		}
+		success(c, http.StatusOK, resp)
+	})
+	protected.GET("/chat/sessions/:id/messages", func(c *gin.Context) {
+		resp, err := chats.GetChat(c.Request.Context(), &chathandler.GetChatReq{ActorID: actorID(c), SessionID: c.Param("id")})
+		if err != nil {
+			writeError(c, err)
+			return
+		}
+		success(c, http.StatusOK, resp.Messages)
+	})
+	protected.POST("/chat/sessions/:id/runs", func(c *gin.Context) {
+		var body chathandler.AskReq
+		if err := c.ShouldBindJSON(&body); err != nil {
+			fail(c, http.StatusBadRequest, "INVALID_ARGUMENT", "请求参数无效")
+			return
+		}
+		body.ActorID, body.SessionID = actorID(c), c.Param("id")
+		stream, err := chats.Ask(c.Request.Context(), &body)
+		if err != nil {
+			writeError(c, err)
+			return
+		}
+		// Forward the Agent's SSE frames verbatim. The browser never reaches
+		// the Agent directly (ADR-0003 "消息和问答流程").
+		defer stream.Body.Close()
+		c.Header("Content-Type", stream.ContentType)
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+		c.Header("X-Accel-Buffering", "no")
+		c.Status(http.StatusOK)
+		c.Stream(func(w io.Writer) bool {
+			buf := make([]byte, 4096)
+			written, readErr := stream.Body.Read(buf)
+			if written > 0 {
+				if _, err := w.Write(buf[:written]); err != nil {
+					return false
+				}
+				if flusher, ok := w.(http.Flusher); ok {
+					flusher.Flush()
+				}
+			}
+			if readErr != nil {
+				return false
+			}
+			return true
+		})
 	})
 	return router, &RouterResources{SQLClose: sqlDB.Close, Redis: redisClient}, nil
 }

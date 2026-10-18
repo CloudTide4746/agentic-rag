@@ -6,13 +6,13 @@ MySQL 库表与基础数据（datasource_config / sales）由项目根目录 age
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, FastAPI
 
 from . import db
 from .config import settings
 from .es import elastic
-from .routers import chat, datasources, decision_logs, kb, retrieval_test
+from .internal_auth import require_internal_token
+from .routers import chat, kb
 from .startup_check import run_startup_checks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -30,24 +30,23 @@ async def lifespan(app: FastAPI):
     await elastic.close()
 
 
-app = FastAPI(title="Agentic RAG API", version="1.0.0", lifespan=lifespan)
+if not settings.internal_api_token:
+    raise RuntimeError("INTERNAL_API_TOKEN 必须配置后才能启动 Agent 服务")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = FastAPI(
+    title="Agentic RAG Internal Service",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 app.include_router(kb.router)
-app.include_router(datasources.router)
-app.include_router(decision_logs.router)
 app.include_router(chat.router)
-app.include_router(retrieval_test.router)
 
 
-@app.get("/api/health")
+@app.get("/internal/healthz", dependencies=[Depends(require_internal_token)])
 async def health() -> dict:
     mysql_ok = True
     es_ok = await elastic.ping()
@@ -58,7 +57,6 @@ async def health() -> dict:
     return {
         "status": "ok" if (mysql_ok and es_ok) else "degraded",
         "version": app.version,
-        "model": settings.llm_model,
         "mysql": mysql_ok,
         "elasticsearch": es_ok,
     }

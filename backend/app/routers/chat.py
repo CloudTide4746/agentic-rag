@@ -1,13 +1,18 @@
 """问答路由 — SSE 问答流核心接口（设计书 5.2 / 5.3）"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import FileResponse, StreamingResponse
 
 from .. import db
 from ..agent.orchestrator import run_ask
 from ..models import AskRequest
 from ..services import chat_images, sessions
+from ..internal_auth import require_internal_token
 
-router = APIRouter(prefix="/api/chat", tags=["chat"])
+router = APIRouter(
+    prefix="/internal/rag/chat",
+    tags=["internal-rag-chat"],
+    dependencies=[Depends(require_internal_token)],
+)
 
 
 @router.post("/sessions", status_code=201)
@@ -35,13 +40,6 @@ async def delete_session(session_id: int) -> dict:
         raise HTTPException(404, "会话不存在")
     await sessions.delete_session(session_id)
     return {"deleted": session_id}
-
-
-@router.delete("/sessions/{session_id}/last-assistant")
-async def purge_last_assistant(session_id: int) -> dict:
-    """重新生成前置清理：移除最后一条 assistant 消息及其决策日志"""
-    removed = await sessions.purge_last_assistant(session_id)
-    return {"removed": removed}
 
 
 @router.get("/images/{name}")

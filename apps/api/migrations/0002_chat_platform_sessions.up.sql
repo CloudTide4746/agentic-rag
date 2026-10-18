@@ -1,0 +1,21 @@
+CREATE TABLE chat_platform_sessions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  deleted_at DATETIME(3) NULL,
+  public_id VARCHAR(64) NOT NULL,
+  owner_id BIGINT UNSIGNED NOT NULL,
+  agent_session_id VARCHAR(64) NULL,
+  title VARCHAR(128) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  last_error_code VARCHAR(64) NULL,
+  idempotency_key VARCHAR(64) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY ux_chat_platform_sessions_public_id (public_id),
+  UNIQUE KEY ux_chat_platform_sessions_idempotency_key (idempotency_key),
+  KEY idx_chat_platform_sessions_owner (owner_id, updated_at),
+  KEY idx_chat_platform_sessions_agent (agent_session_id),
+  KEY idx_chat_platform_sessions_deleted_at (deleted_at),
+  CONSTRAINT fk_chat_platform_sessions_owner FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE RESTRICT,
+  CONSTRAINT chk_chat_platform_sessions_status CHECK (status IN ('creating', 'active', 'pending', 'failed', 'deleting'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

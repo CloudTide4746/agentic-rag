@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     reflect_max_rounds: int = 2
     overall_timeout: int = 120  # 单轮问答总超时（秒）
     history_window: int = 8  # 多轮上下文条数
+    # Go is the only caller of this service. Keep the credential outside source control.
+    internal_api_token: str = ""
 
 
 settings = Settings()

@@ -15,6 +15,11 @@ tags:
     description: Project resource CRUD.
   - name: Tasks
     description: Task resource CRUD.
+  - name: Chat
+    description: >-
+      Platform chat sessions. Go owns the platform mapping, authorization and
+      lifecycle; the Python Agent runtime owns conversation content and is only
+      reached through the internal AgentClient.
 paths:
   /api/v1/auth/register:
     post:
@@ -387,6 +392,114 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/chat/sessions:
+    get:
+      tags: [Chat]
+      operationId: listChatSessions
+      security: [{BearerAuth: []}]
+      summary: List the caller's chat sessions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': {$ref: '#/components/responses/ChatSessionPageResponseEnvelope'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Chat]
+      operationId: createChatSession
+      security: [{BearerAuth: []}]
+      summary: Create a chat session
+      description: >-
+        Creates the platform mapping first, then the Agent session. An explicit
+        Agent rejection marks the mapping failed; a timeout or lost response
+        marks it pending for reconciliation and is never retried blindly.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: {type: string, maxLength: 128}
+      responses:
+        '201': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '502': {$ref: '#/components/responses/AgentRejected'}
+        '503': {$ref: '#/components/responses/AgentUnavailable'}
+        '504': {$ref: '#/components/responses/AgentTimeout'}
+  /api/v1/chat/sessions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ChatSessionID'
+    get:
+      tags: [Chat]
+      operationId: getChatSession
+      security: [{BearerAuth: []}]
+      summary: Get one owned chat session with its message history
+      responses:
+        '200': {$ref: '#/components/responses/ChatSessionDetailResponseEnvelope'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/AgentUnavailable'}
+  /api/v1/chat/sessions/{id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ChatSessionID'
+    get:
+      tags: [Chat]
+      operationId: getChatMessages
+      security: [{BearerAuth: []}]
+      summary: List the messages of one owned chat session
+      responses:
+        '200': {$ref: '#/components/responses/ChatMessageListResponseEnvelope'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/AgentUnavailable'}
+  /api/v1/chat/sessions/{id}/runs:
+    parameters:
+      - $ref: '#/components/parameters/ChatSessionID'
+    post:
+      tags: [Chat]
+      operationId: startChatRun
+      security: [{BearerAuth: []}]
+      summary: Ask a question and stream the Agent answer
+      description: >-
+        Proxies the Agent's server-sent event stream. Event data is produced by
+        the Agent runtime. Validation, ownership and knowledge base checks run
+        before the stream opens, so a rejected request never emits a partial
+        stream. Whether the user turn is persisted is decided by the platform,
+        not by the caller.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: {type: string, minLength: 1, maxLength: 4000}
+                knowledge_base_ids:
+                  type: array
+                  maxItems: 50
+                  items: {type: string, pattern: '^[1-9][0-9]*$'}
+                images:
+                  type: array
+                  maxItems: 4
+                  items: {type: string}
+      responses:
+        '200':
+          description: Agent event stream
+          content:
+            text/event-stream:
+              schema: {type: string, description: 'SSE frames (event/data fields)'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '502': {$ref: '#/components/responses/AgentRejected'}
+        '503': {$ref: '#/components/responses/AgentUnavailable'}
+        '504': {$ref: '#/components/responses/AgentTimeout'}
 components:
   securitySchemes:
     BearerAuth:
@@ -407,6 +520,14 @@ components:
       name: page_size
       in: query
       schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    ChatSessionID:
+      name: id
+      in: path
+      required: true
+      description: >-
+        The opaque platform session id. The Agent's internal numeric session id
+        is never exposed.
+      schema: {type: string, minLength: 1, maxLength: 64}
   responses:
     Success:
       description: Successful operation; the data field contains the route response.
@@ -435,6 +556,41 @@ components:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
     Conflict:
       description: Duplicate resource or concurrent update conflict
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    ChatSessionResponseEnvelope:
+      description: Successful operation; the data field contains the chat session.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ChatSessionResponseEnvelope'}
+    ChatSessionPageResponseEnvelope:
+      description: Successful operation; the data field contains a session page.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ChatSessionPageResponseEnvelope'}
+    ChatSessionDetailResponseEnvelope:
+      description: Successful operation; the data field contains a session and its messages.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ChatSessionDetailResponseEnvelope'}
+    ChatMessageListResponseEnvelope:
+      description: Successful operation; the data field contains the message list.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ChatMessageListResponseEnvelope'}
+    AgentRejected:
+      description: The Agent runtime explicitly rejected the request (code AGENT_REJECTED)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    AgentUnavailable:
+      description: The Agent runtime is unreachable or failed internally (code AGENT_UNAVAILABLE)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    AgentTimeout:
+      description: The Agent runtime did not respond in time (code AGENT_TIMEOUT)
       content:
         application/json:
           schema: {$ref: '#/components/schemas/ErrorEnvelope'}
@@ -609,3 +765,74 @@ components:
               required: [task]
               properties:
                 task: {$ref: '#/components/schemas/Task'}
+    ChatSession:
+      type: object
+      required: [id, title, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          description: Opaque platform session id.
+        title: {type: string}
+        status:
+          type: string
+          enum: [creating, active, pending, failed, deleting]
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ChatMessage:
+      type: object
+      required: [role, content, created_at]
+      properties:
+        role: {type: string, enum: [user, assistant]}
+        content: {type: string}
+        citations:
+          type: [array, 'null']
+          description: Structured citations produced by the Agent runtime.
+          items: {type: object, additionalProperties: true}
+        images:
+          type: array
+          items: {type: string}
+        decision_log_id:
+          type: [string, 'null']
+          description: Opaque decision log reference for this answer.
+        created_at: {type: string, format: date-time}
+    ChatSessionPage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/ChatSession'}}
+        total: {type: integer, format: int64}
+        page: {type: integer}
+        page_size: {type: integer}
+    ChatSessionResponseEnvelope:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessEnvelope'}
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [session]
+              properties:
+                session: {$ref: '#/components/schemas/ChatSession'}
+    ChatSessionPageResponseEnvelope:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessEnvelope'}
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/ChatSessionPage'}
+    ChatSessionDetailResponseEnvelope:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessEnvelope'}
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [session, messages]
+              properties:
+                session: {$ref: '#/components/schemas/ChatSession'}
+                messages: {type: array, items: {$ref: '#/components/schemas/ChatMessage'}}
+    ChatMessageListResponseEnvelope:
+      allOf:
+        - {$ref: '#/components/schemas/SuccessEnvelope'}
+        - type: object
+          properties:
+            data: {type: array, items: {$ref: '#/components/schemas/ChatMessage'}}
