@@ -87,6 +87,7 @@ func (s *ProjectService) GetProject(ctx context.Context, req *handler.GetProject
 	}
 	return &handler.GetProjectResp{Project: *item}, nil
 }
+
 func (s *ProjectService) UpdateProject(ctx context.Context, req *handler.UpdateProjectReq) (*handler.UpdateProjectResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -143,6 +144,7 @@ func (s *ProjectService) UpdateProject(ctx context.Context, req *handler.UpdateP
 	}
 	return &handler.UpdateProjectResp{Project: *updated}, nil
 }
+
 func (s *ProjectService) DeleteProject(ctx context.Context, req *handler.DeleteProjectReq) (*handler.DeleteProjectResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated

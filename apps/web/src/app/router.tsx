@@ -1,15 +1,19 @@
-import { lazy, Suspense } from 'react'
-import { createBrowserRouter, Navigate, NavLink, Outlet, type RouteObject } from 'react-router'
-import { AppLayout } from '../features/layout'
+/** @format */
 
-const ChatPage = lazy(() => import('../features/chat/routes/ChatPage'))
-const KnowledgePage = lazy(() => import('../features/knowledge/routes/KnowledgePage'))
-const DatasourcePage = lazy(() => import('../features/admin/routes/DatasourcePage'))
-const PlaygroundPage = lazy(() => import('../features/admin/routes/PlaygroundPage'))
-const DecisionLogPage = lazy(() => import('../features/logs/routes/DecisionLogPage'))
+import { lazy, Suspense } from "react";
+import { createBrowserRouter, Navigate, NavLink, Outlet, type RouteObject } from "react-router";
+import { AppLayout as AdminLayout } from "../features/layout/index";
+import { AppLayout, type AppLayoutProps } from "../features/platform/index";
+import { teamflowRoutes } from "./teamflowRoutes";
+
+const ChatPage = lazy(() => import("../features/chat/routes/ChatPage"));
+const KnowledgePage = lazy(() => import("../features/knowledge/routes/KnowledgePage"));
+const DatasourcePage = lazy(() => import("../features/admin/routes/DatasourcePage"));
+const PlaygroundPage = lazy(() => import("../features/admin/routes/PlaygroundPage"));
+const DecisionLogPage = lazy(() => import("../features/logs/routes/DecisionLogPage"));
 
 function RouteContent() {
-  return <Suspense fallback={<p role="status" className="p-6 text-sm text-slate-400">正在加载页面…</p>}><Outlet /></Suspense>
+  return <Suspense fallback={<p role="status" className="p-6 text-sm text-slate-400">正在加载页面…</p>}><Outlet /></Suspense>;
 }
 
 function NotFound() {
@@ -21,17 +25,32 @@ function NotFound() {
   </main>
 }
 
-export const appRoutes: RouteObject[] = [{
-  element: <AppLayout><RouteContent /></AppLayout>,
-  children: [
-    { index: true, element: <Navigate to="/chat" replace /> },
-    { path: 'chat', element: <ChatPage /> },
-    { path: 'admin/kb', element: <KnowledgePage /> },
-    { path: 'admin/datasources', element: <DatasourcePage /> },
-    { path: 'admin/playground', element: <PlaygroundPage /> },
-    { path: 'admin/logs', element: <DecisionLogPage /> },
-    { path: '*', element: <NotFound /> },
-  ],
-}]
+function AdminShell({ children }: AppLayoutProps) {
+  return <AdminLayout>{children}</AdminLayout>;
+}
 
-export const router = createBrowserRouter(appRoutes)
+function AppShell({ children }: AppLayoutProps) {
+  // TeamFlow app shell; a protected-route guard is added together with the auth contract.
+  return <AppLayout>{children}</AppLayout>;
+}
+
+export const appRoutes: RouteObject[] = [
+  {
+    element: <AdminShell><RouteContent /></AdminShell>,
+    children: [
+      { index: true, element: <Navigate to="/chat" replace /> },
+      { path: "chat", element: <ChatPage /> },
+      { path: "admin/kb", element: <KnowledgePage /> },
+      { path: "admin/datasources", element: <DatasourcePage /> },
+      { path: "admin/playground", element: <PlaygroundPage /> },
+      { path: "admin/logs", element: <DecisionLogPage /> },
+    ],
+  },
+  {
+    element: <AppShell><RouteContent /></AppShell>,
+    children: teamflowRoutes,
+  },
+  { path: "*", element: <NotFound /> },
+];
+
+export const router = createBrowserRouter(appRoutes);

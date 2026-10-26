@@ -1,0 +1,26 @@
+/* Minimal TeamFlow placeholder styles. Light, single accent color, no decorative effects. */
+:root {
+  --accent: #2563eb;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  color-scheme: light;
+}
+body { background: #fff; color: var(--text); }
+.page { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.topbar .brand { font-weight: 600; text-decoration: none; color: var(--text); }
+.topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.topbar ul, .topbar li { display: inline; margin: 0; padding: 0; }
+.topbar nav ul { display: flex; gap: 16px; }
+.topbar a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.topbar a:hover, .topbar a.active { color: var(--accent); }
+.topbar .muted { margin-left: auto; }
+article { padding: 32px 0; }
+h1 { font-size: 22px; margin: 4px 0 8px; }
+h2 { font-size: 15px; margin: 0 0 8px; }
+section { border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin: 16px 0; }
+.muted { color: var(--muted); font-size: 13px; }
+.skeleton { display: grid; gap: 8px; margin: 8px 0; }
+.skeleton span { display: block; height: 12px; border-radius: 3px; background: #f1f3f5; }
+a { color: var(--accent); }

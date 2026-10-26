@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-test('navigates all five static preview pages without calling APIs', async ({ page }) => {
+test('navigates all five static preview pages', async ({ page }) => {
+  // ChatPage loads its own sessions; the admin preview pages must stay data-free.
   const apiRequests: string[] = []
   page.on('request', request => {
-    if (request.url().includes('/api/')) apiRequests.push(request.url())
+    const url = request.url()
+    if (new URL(url).pathname.startsWith('/api/') && !new URL(url).pathname.startsWith('/api/chat/')) apiRequests.push(url)
   })
   await page.goto('/')
 
