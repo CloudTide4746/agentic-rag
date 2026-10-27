@@ -1,4 +1,13 @@
 export { AppLayout } from './ui/AppLayout'
 export type { AppLayoutProps } from './ui/AppLayout'
-export { PagePlaceholder, PlaceholderBreadcrumbs, PlaceholderCard, PlaceholderCta, PlaceholderRows } from './ui/PagePlaceholders'
-export type { PagePlaceholderProps } from './ui/PagePlaceholders'
+export {
+  EmptyState,
+  PageColumns,
+  PageHeader,
+  PreviewButton,
+  PreviewField,
+  PreviewSelect,
+  ReadonlyValue,
+  SectionPanel,
+} from './ui/PagePlaceholders'
+export type { BreadcrumbItem } from './ui/PagePlaceholders'

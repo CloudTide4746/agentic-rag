@@ -4,9 +4,27 @@
   --font-sans: "Segoe UI", "Microsoft YaHei", sans-serif;
   --color-brand: #22d3ee;
 }
-html { color-scheme: dark; background: #080d16; }
-body { margin: 0; min-width: 320px; background: #080d16; color: #e2e8f0; font-family: var(--font-sans); }
-button { cursor: pointer; }
-button:disabled { cursor: wait; }
-:focus-visible { outline: 3px solid #22d3ee; outline-offset: 3px; }
-::selection { background: rgb(34 211 238 / 25%); }
+html {
+  color-scheme: dark;
+  background: gray;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #080d16;
+  color: #e2e8f0;
+  font-family: var(--font-sans);
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+}
+:focus-visible {
+  outline: 3px solid #22d3ee;
+  outline-offset: 3px;
+}
+::selection {
+  background: rgb(34 211 238 / 25%);
+}
