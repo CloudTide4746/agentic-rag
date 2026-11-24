@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router'
 import './minimal.css'
+import { useAuth } from '../../auth'
 
 export interface AppLayoutProps { children?: ReactNode }
 
@@ -17,6 +18,7 @@ function AppNavigation({ onNavigate }: { onNavigate: () => void }) {
     <NavLink to="/app/teams" onClick={onNavigate} className={({ isActive }) => `tf-nav-link${isActive ? ' is-active' : ''}`}>
       <span className="tf-nav-index" aria-hidden="true">02</span>团队
     </NavLink>
+    <NavLink to="/chat" onClick={onNavigate} className="tf-nav-link">智能问答</NavLink>
     {teamPath && projectPath ? <>
       <p className="tf-nav-label tf-nav-context">当前团队</p>
       <NavLink to={teamPath} end onClick={onNavigate} className={({ isActive }) => `tf-nav-link tf-nav-sub${isActive ? ' is-active' : ''}`}>
@@ -33,6 +35,7 @@ function AppNavigation({ onNavigate }: { onNavigate: () => void }) {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
@@ -47,7 +50,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="tf-sidebar-foot">
         <span className="tf-sidebar-dot" aria-hidden="true" />
         <span>协作平台</span>
-        <span className="tf-sidebar-version">预览</span>
+        <span className="tf-sidebar-version">演示</span>
       </div>
     </aside>
 
@@ -69,7 +72,8 @@ export function AppLayout({ children }: AppLayoutProps) {
           <span className="tf-topbar-divider" aria-hidden="true">/</span>
           <span>协作平台</span>
         </div>
-        <span className="tf-preview-pill"><span aria-hidden="true" />静态界面预览</span>
+        <span>{user?.nickname || user?.username}</span>
+        <button type="button" onClick={() => void logout()}>退出登录</button>
       </header>
 
       {menuOpen ? <>
@@ -79,10 +83,6 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       </> : null}
 
-      <div className="tf-preview-notice" role="note">
-        <span className="tf-preview-notice-mark" aria-hidden="true">i</span>
-        <span>静态界面预览，数据读取与提交操作尚未接入。</span>
-      </div>
       <main id="main-content" className="tf-main-content">{children ?? <Outlet />}</main>
     </div>
   </div>

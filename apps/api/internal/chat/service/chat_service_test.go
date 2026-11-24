@@ -10,7 +10,7 @@ import (
 	"teamflow/internal/chat"
 	"teamflow/internal/chat/handler"
 	"teamflow/internal/chat/repository"
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 )
 
 type fakeStore struct {

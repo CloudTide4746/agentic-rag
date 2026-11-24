@@ -24,13 +24,23 @@ internal/
   team/                   # 团队和成员规则
   project/                # 项目和项目成员规则
   task/                   # 任务规则与状态流转
-  platform/               # HTTP 路由、静态文件、进程级接线
+  infrastructure/
+    config/               # 启动配置读取与校验
+    faults/               # 当前共享错误定义
+    httpx/                # HTTP 请求解析与统一响应
+    middleware/           # 请求 ID、请求体限制、恢复与认证 HTTP 适配
+    platform/             # 依赖组装、路由及中间件安装
+    security/             # JWT 签名与校验适配器
   ...                     # 基础设施适配器按职责归属
 api/                      # OpenAPI 与公开契约
 migrations/               # 有编号、可审查的 SQL 迁移
 ```
 
 模块对外提供小而稳定的应用接口、领域类型和必要 DTO。跨模块协作只能使用公开接口；禁止导入其他模块的私有文件、handler、repository 或 ORM 模型。不得为假设中的替换点提前增加空洞接口；只有存在真实替代实现或需要隔离的外部边界时再定义端口。
+
+上图反映当前目录位置；迁移后 Go 包路径为 `teamflow/internal/infrastructure/...`。目录归组不改变数据所有权或允许的依赖方向，后续边界调整建议见[目录结构与引用维护](../../../docs/目录结构与引用维护.md)。
+
+中间件实现统一归 `infrastructure/middleware`，`platform` 负责安装。认证中间件通过消费端最小 `Authenticator` 接口调用认证用例，不依赖认证 Handler、Service 或仓储实现；JWT 与会话规则仍归认证用例。响应与上下文键继续复用 `httpx`。为保留现有测试调用点，旧入口仅转发，不持有第二份实现；后续迁移测试时删除。详见 [ADR-0005](../../../docs/adr/0005-中间件职责拆分.md)。
 
 处理器/路由负责 HTTP 输入解析、边界校验、调用用例和映射响应；用例负责业务流程、授权决策及事务边界；领域代码表达稳定业务规则；Repository/客户端等适配器负责数据库或外部协议。入口负责构造依赖并注入，业务模块不得自行创建全局数据库、Redis 或 HTTP 客户端。
 

@@ -233,7 +233,7 @@ func runServer() {
 		logger.Logger,
 		onlineController,
 	)
-	SetupWebSocketRoutes(r, hub)
+	// SetupWebSocketRoutes(r, hub)
 
 	// 启动 HTTP 服务（Run 阻塞，仅出错时返回）
 	if err := r.Run(":8080"); err != nil {

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 	"teamflow/internal/task"
-	"teamflow/internal/task/handler"	
+	"teamflow/internal/task/handler"
 )
 
 type Repository interface {
@@ -29,9 +29,11 @@ type TaskService struct {
 
 var _ handler.TaskHandler = (*TaskService)(nil)
 
+// NewTaskService 注入任务仓库和项目访问能力，创建任务服务。
 func NewTaskService(repo Repository, projects ProjectAccess) *TaskService {
 	return &TaskService{repo: repo, projects: projects}
 }
+
 // CreateTask 创建任务
 func (s *TaskService) CreateTask(ctx context.Context, req *handler.CreateTaskReq) (*handler.CreateTaskResp, error) {
 	if req == nil || req.ActorID == 0 {
@@ -65,6 +67,7 @@ func (s *TaskService) CreateTask(ctx context.Context, req *handler.CreateTaskReq
 	}
 	return &handler.CreateTaskResp{Task: *created}, nil
 }
+
 // GetTask 获取任务
 func (s *TaskService) GetTask(ctx context.Context, req *handler.GetTaskReq) (*handler.GetTaskResp, error) {
 	if req == nil || req.ActorID == 0 {
@@ -76,6 +79,7 @@ func (s *TaskService) GetTask(ctx context.Context, req *handler.GetTaskReq) (*ha
 	}
 	return &handler.GetTaskResp{Task: *item}, nil
 }
+
 // ListTasks 获取任务列表
 func (s *TaskService) ListTasks(ctx context.Context, req *handler.ListTasksReq) (*handler.ListTasksResp, error) {
 	if req == nil || req.ActorID == 0 {
@@ -111,6 +115,7 @@ func (s *TaskService) ListTasks(ctx context.Context, req *handler.ListTasksReq) 
 	}
 	return &handler.ListTasksResp{Items: items, Total: total, Page: page, PageSize: size}, nil
 }
+
 // UpdateTask 更新任务
 func (s *TaskService) UpdateTask(ctx context.Context, req *handler.UpdateTaskReq) (*handler.UpdateTaskResp, error) {
 	if req == nil || req.ActorID == 0 {
@@ -158,6 +163,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, req *handler.UpdateTaskReq
 	}
 	return &handler.UpdateTaskResp{Task: *updated}, nil
 }
+
 // DeleteTask 删除任务
 func (s *TaskService) DeleteTask(ctx context.Context, req *handler.DeleteTaskReq) (*handler.DeleteTaskResp, error) {
 	if req == nil || req.ActorID == 0 {
@@ -171,6 +177,7 @@ func (s *TaskService) DeleteTask(ctx context.Context, req *handler.DeleteTaskReq
 	}
 	return &handler.DeleteTaskResp{}, nil
 }
+
 // requireMember 检查用户是否是任务的成员
 func (s *TaskService) requireMember(ctx context.Context, taskID, userID uint) (*task.Task, error) {
 	item, err := s.repo.Get(ctx, taskID)

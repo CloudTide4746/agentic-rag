@@ -1,81 +1,73 @@
-import type { ChatMessage, ChatSession, SseEvent } from '../../types/legacy'
-import { SseParser } from './sseParser'
-import { apiJson, jsonInit } from './http'
+import type { Citation, SseEvent } from '../../types/legacy'
+import type { ChatMessage, ChatSession } from './dto'
+import {
+  ask as askGo,
+  createChat,
+  getChat,
+  listSessions as listGoSessions,
+} from './list'
 
-/* ============================================================
- * 问答端 API — 路径与协议对齐设计书 5.2 节
- * ============================================================ */
-
-/** POST /api/chat/sessions */
-export async function createSession(): Promise<ChatSession> {
-  return apiJson<ChatSession>('/api/chat/sessions', { method: 'POST' })
+type GoChatMessage = Omit<ChatMessage, 'id' | 'session_id' | 'citations'> & {
+  id: number
+  session_id: string
+  citations?: Citation[]
 }
 
-/** GET /api/chat/sessions */
-export async function listSessions(): Promise<ChatSession[]> {
-  return apiJson<ChatSession[]>('/api/chat/sessions')
+function isCitation(value: unknown): value is Citation {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Record<string, unknown>
+  return (
+    typeof item.doc_name === 'string' &&
+    typeof item.section_path === 'string' &&
+    typeof item.chunk_no === 'number'
+  )
 }
 
-/** GET /api/chat/sessions/{session_id}/messages */
-export async function getMessages(sessionId: number): Promise<ChatMessage[]> {
-  return apiJson<ChatMessage[]>(`/api/chat/sessions/${sessionId}/messages`)
+/** POST /api/v1/chat/sessions */
+export async function createSession(signal?: AbortSignal): Promise<ChatSession> {
+  const response = await createChat({}, signal)
+  return response.data.session
 }
 
-/** DELETE /api/chat/sessions/{session_id} */
-export async function deleteSession(sessionId: number): Promise<void> {
-  await apiJson(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' })
+/** GET /api/v1/chat/sessions, collecting all pages for the existing chat list. */
+export async function listSessions(signal?: AbortSignal): Promise<ChatSession[]> {
+  const pageSize = 100
+  const first = await listGoSessions({ page: 1, page_size: pageSize }, signal)
+  const sessions = [...first.data.items]
+  const pageCount = Math.ceil(first.data.total / pageSize)
+
+  for (let page = 2; page <= pageCount; page += 1) {
+    const response = await listGoSessions({ page, page_size: pageSize }, signal)
+    sessions.push(...response.data.items)
+  }
+  return sessions
 }
 
-/** DELETE /api/chat/sessions/{session_id}/last-assistant — 重新生成前清理旧答案与决策日志 */
-export async function purgeLastAssistant(sessionId: number): Promise<void> {
-  await apiJson(`/api/chat/sessions/${sessionId}/last-assistant`, { method: 'DELETE' })
+/** GET /api/v1/chat/sessions/:id */
+export async function getMessages(sessionId: string, signal?: AbortSignal): Promise<GoChatMessage[]> {
+  const response = await getChat(sessionId, signal)
+  return response.data.messages.map((message, index) => ({
+    ...message,
+    id: index + 1,
+    session_id: sessionId,
+    citations: Array.isArray(message.citations)
+      ? message.citations.filter(isCitation)
+      : undefined,
+  }))
 }
 
-/**
- * POST /api/chat/sessions/{session_id}/ask — SSE 问答流（核心接口）
- * fetch + ReadableStream，经 SseParser 解析回调；
- * images 为多模态图片引用（data URL 新上传 / 站内 URL 重答复用）；
- * 落库（用户/assistant 消息 + 决策日志）由后端完成（事件与日志同源）
- */
-export async function ask(
-  sessionId: number,
+/** POST /api/v1/chat/sessions/:id/runs */
+export function ask(
+  sessionId: string,
   question: string,
   onEvent: (event: SseEvent) => void,
   signal?: AbortSignal,
-  skipUserPersist = false,
   images?: string[],
 ): Promise<void> {
-  const resp = await fetch(`/api/chat/sessions/${sessionId}/ask`, {
-    ...jsonInit('POST', { question, skip_user_persist: skipUserPersist, images: images ?? [] }),
+  return askGo(
+    sessionId,
+    { question, ...(images?.length ? { images } : {}) },
+    onEvent,
     signal,
-  })
-  if (!resp.ok || !resp.body) {
-    let msg = `HTTP ${resp.status}`
-    try {
-      const j = (await resp.json()) as { detail?: string; message?: string }
-      msg = j?.detail || j?.message || msg
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg)
-  }
-  const parser = new SseParser()
-  const decoder = new TextDecoder()
-  const reader = resp.body.getReader()
-  try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      for (const event of parser.feed(decoder.decode(value, { stream: true }))) {
-        onEvent(event)
-      }
-    }
-  } catch (err) {
-    // 用户主动中断：吸收 AbortError，其余上抛
-    if ((err as DOMException)?.name === 'AbortError') return
-    throw err
-  }
-  for (const event of parser.feed(decoder.decode())) {
-    onEvent(event)
-  }
+  )
 }

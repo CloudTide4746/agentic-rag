@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"teamflow/internal/httpx"
+	"teamflow/internal/infrastructure/httpx"
 	"teamflow/internal/team"
 
 	"github.com/gin-gonic/gin"

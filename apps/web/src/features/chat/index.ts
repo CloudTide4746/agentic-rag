@@ -1,4 +1,6 @@
 export { ChatInput } from './ui/ChatInput'
+import { useChatStore } from '../../store/chat'
+export function clearChatSession() { useChatStore.getState().resetDecision() }
 export { CitationChunkDrawer } from './ui/CitationChunkDrawer'
 export { DecisionPipeline } from './ui/DecisionPipeline'
 export { DecisionSidebar } from './ui/DecisionSidebar'

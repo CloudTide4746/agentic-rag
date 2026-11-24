@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 	"teamflow/internal/project"
 	"teamflow/internal/project/handler"
 )
@@ -31,10 +31,12 @@ type ProjectService struct {
 
 var _ handler.ProjectHandler = (*ProjectService)(nil)
 
+// NewProjectService 注入项目仓库和团队访问能力，创建项目服务。
 func NewProjectService(repo Repository, teams TeamAccess) *ProjectService {
 	return &ProjectService{repo: repo, teams: teams}
 }
 
+// CreateProject 校验项目信息及团队成员身份，创建由当前用户拥有的项目。
 func (s *ProjectService) CreateProject(ctx context.Context, req *handler.CreateProjectReq) (*handler.CreateProjectResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -59,6 +61,8 @@ func (s *ProjectService) CreateProject(ctx context.Context, req *handler.CreateP
 	}
 	return &handler.CreateProjectResp{Project: *created}, nil
 }
+
+// ListProjects 确认团队成员身份后分页返回团队下的项目。
 func (s *ProjectService) ListProjects(ctx context.Context, req *handler.ListProjectsReq) (*handler.ListProjectsResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -77,6 +81,8 @@ func (s *ProjectService) ListProjects(ctx context.Context, req *handler.ListProj
 	}
 	return &handler.ListProjectsResp{Items: items, Total: total, Page: page, PageSize: size}, nil
 }
+
+// GetProject 确认用户同时拥有团队和项目成员身份后返回项目详情。
 func (s *ProjectService) GetProject(ctx context.Context, req *handler.GetProjectReq) (*handler.GetProjectResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -88,6 +94,7 @@ func (s *ProjectService) GetProject(ctx context.Context, req *handler.GetProject
 	return &handler.GetProjectResp{Project: *item}, nil
 }
 
+// UpdateProject 确认成员及所有者身份，校验字段和日期范围后更新项目。
 func (s *ProjectService) UpdateProject(ctx context.Context, req *handler.UpdateProjectReq) (*handler.UpdateProjectResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -145,6 +152,7 @@ func (s *ProjectService) UpdateProject(ctx context.Context, req *handler.UpdateP
 	return &handler.UpdateProjectResp{Project: *updated}, nil
 }
 
+// DeleteProject 确认成员及所有者身份后删除项目。
 func (s *ProjectService) DeleteProject(ctx context.Context, req *handler.DeleteProjectReq) (*handler.DeleteProjectResp, error) {
 	if req == nil || req.ActorID == 0 {
 		return nil, faults.ErrUnauthenticated
@@ -161,6 +169,8 @@ func (s *ProjectService) DeleteProject(ctx context.Context, req *handler.DeleteP
 	}
 	return &handler.DeleteProjectResp{}, nil
 }
+
+// IsMember 检查项目是否存在，以及用户是否同时属于项目及其团队。
 func (s *ProjectService) IsMember(ctx context.Context, projectID, userID uint) (bool, error) {
 	item, err := s.repo.Get(ctx, projectID)
 	if errors.Is(err, faults.ErrNotFound) {
@@ -179,6 +189,8 @@ func (s *ProjectService) IsMember(ctx context.Context, projectID, userID uint) (
 	}
 	return s.repo.IsMember(ctx, projectID, userID)
 }
+
+// requireMember 读取项目并校验用户的团队和项目成员身份。
 func (s *ProjectService) requireMember(ctx context.Context, projectID, userID uint) (*project.Project, error) {
 	item, err := s.repo.Get(ctx, projectID)
 	if err != nil {
@@ -204,6 +216,8 @@ func (s *ProjectService) requireMember(ctx context.Context, projectID, userID ui
 	}
 	return item, nil
 }
+
+// normalizePage 规范化分页参数，应用默认值并限制页码及每页数量。
 func normalizePage(page, size int) (int, int) {
 	if page < 1 {
 		page = 1

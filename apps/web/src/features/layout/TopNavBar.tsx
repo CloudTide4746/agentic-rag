@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router'
+import { useAuth } from '../auth'
 
 const navItems = [
+  { label: '协作工作台', to: '/app', icon: '⌂' },
   { label: '智能问答', to: '/chat', icon: '◉' },
   { label: '知识库', to: '/admin/kb', icon: '▤' },
   { label: '数据源', to: '/admin/datasources', icon: '⌘' },
@@ -10,6 +12,7 @@ const navItems = [
 ]
 
 export function TopNavBar() {
+  const { user, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   return <header className="relative z-20 border-b border-slate-800 bg-[#0b111d]/95 backdrop-blur">
     <div className="flex h-14 items-center px-4 sm:px-5">
@@ -22,7 +25,7 @@ export function TopNavBar() {
           {({ isActive }) => <><span aria-hidden="true" className="text-sm">{item.icon}</span>{item.label}{isActive && <span className="absolute inset-x-4 bottom-0 h-0.5 rounded bg-cyan-300" />}</>}
         </NavLink>)}
       </nav>
-      <span className="ml-auto hidden font-mono text-[10px] tracking-wider text-slate-500 lg:block">PREVIEW BUILD · 0.1</span>
+      <span className="ml-auto">{user ? <button type="button" onClick={() => void logout()}>{user.username} · 退出</button> : <NavLink to="/login">登录</NavLink>}</span>
       <button type="button" className="ml-auto inline-flex size-10 items-center justify-center rounded-lg border border-slate-700 text-slate-200 hover:border-cyan-500/50 md:hidden" aria-label={menuOpen ? '关闭主导航' : '打开主导航'} aria-expanded={menuOpen} aria-controls="mobile-main-navigation" onClick={() => setMenuOpen(open => !open)}>
         <span aria-hidden="true" className="text-xl">{menuOpen ? '×' : '☰'}</span>
       </button>

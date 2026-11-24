@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RouterProvider } from 'react-router'
-import { router } from './router'
+/** @format */
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } })
+import { RouterProvider } from "react-router";
+import { router } from "./router";
 
 export function App() {
-  return <QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>
+  return (
+    <RouterProvider router={router} />
+  );
 }

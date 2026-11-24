@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"teamflow/internal/httpx"
+	"teamflow/internal/infrastructure/httpx"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,8 +13,10 @@ import (
 // pass-through to the browser.
 type Handler struct{ app ChatHandler }
 
+// New 创建依赖聊天用例的 HTTP 处理器。
 func New(app ChatHandler) *Handler { return &Handler{app: app} }
 
+// Register 注册聊天会话、消息历史和流式问答路由。
 func (h *Handler) Register(group *gin.RouterGroup) {
 	group.POST("/chat/sessions", h.create)
 	group.GET("/chat/sessions", h.list)
@@ -23,6 +25,7 @@ func (h *Handler) Register(group *gin.RouterGroup) {
 	group.POST("/chat/sessions/:id/runs", h.ask)
 }
 
+// create 解析创建会话请求，注入当前用户身份并返回会话信息。
 func (h *Handler) create(c *gin.Context) {
 	var body CreateChatReq
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -38,6 +41,7 @@ func (h *Handler) create(c *gin.Context) {
 	httpx.Success(c, http.StatusCreated, resp)
 }
 
+// list 校验分页参数并返回当前用户的会话列表。
 func (h *Handler) list(c *gin.Context) {
 	page, size, ok := httpx.ParsePage(c)
 	if !ok {
@@ -51,6 +55,7 @@ func (h *Handler) list(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, resp)
 }
 
+// get 按公开会话 ID 获取当前用户的会话及消息历史。
 func (h *Handler) get(c *gin.Context) {
 	// The public id is an opaque platform string, not a numeric id.
 	resp, err := h.app.GetChat(c.Request.Context(), &GetChatReq{ActorID: httpx.ActorID(c), SessionID: c.Param("id")})
@@ -61,6 +66,7 @@ func (h *Handler) get(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, resp)
 }
 
+// messages 获取当前用户指定会话的消息历史并返回消息列表。
 func (h *Handler) messages(c *gin.Context) {
 	resp, err := h.app.GetChat(c.Request.Context(), &GetChatReq{ActorID: httpx.ActorID(c), SessionID: c.Param("id")})
 	if err != nil {
@@ -70,6 +76,7 @@ func (h *Handler) messages(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, resp.Messages)
 }
 
+// ask 解析提问请求并将 Agent SSE 响应流逐块转发给浏览器。
 func (h *Handler) ask(c *gin.Context) {
 	var body AskReq
 	if err := c.ShouldBindJSON(&body); err != nil {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 	"teamflow/internal/team"
 	"teamflow/internal/team/handler"
 )

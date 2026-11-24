@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"teamflow/internal/chat"
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 
 	"gorm.io/gorm"
 )
@@ -27,6 +27,7 @@ type sessionRecord struct {
 	IdempotencyKey string         `gorm:"size:64;not null;uniqueIndex"`
 }
 
+// TableName 返回平台聊天会话映射记录对应的数据库表名。
 func (sessionRecord) TableName() string { return "chat_platform_sessions" }
 
 // SessionRepository 作用是管理聊天会话映射的数据库操作,相当于repository层
@@ -141,6 +142,7 @@ func (s *SessionRepository) MarkPending(ctx context.Context, publicID, errorCode
 	}
 	return nil
 }
+
 // toSession 作用是将 sessionRecord 转换为 chat.Session
 func toSession(row *sessionRecord) *chat.Session {
 	item := &chat.Session{
@@ -160,6 +162,7 @@ func toSession(row *sessionRecord) *chat.Session {
 	return item
 }
 
+// parseID 将字符串 ID 转换为无符号整数，解析失败时返回零。
 func parseID(value string) uint {
 	parsed, err := strconv.ParseUint(value, 10, 64)
 	if err != nil {

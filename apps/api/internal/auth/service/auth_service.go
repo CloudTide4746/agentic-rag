@@ -12,7 +12,7 @@ import (
 
 	"teamflow/internal/auth"
 	"teamflow/internal/auth/handler"
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,10 +44,12 @@ type AuthService struct {
 
 var _ handler.AuthHandler = (*AuthService)(nil)
 
+// NewAuthService 注入用户仓库、会话存储和令牌签名器，创建认证服务。
 func NewAuthService(users UserRepository, sessions SessionStore, tokens TokenSigner) *AuthService {
 	return &AuthService{users: users, sessions: sessions, tokens: tokens}
 }
 
+// Register 校验注册信息，对密码进行 bcrypt 哈希后创建用户。
 func (s *AuthService) Register(ctx context.Context, req *handler.RegisterReq) (*auth.User, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request required: %w", faults.ErrValidation)
@@ -64,10 +66,13 @@ func (s *AuthService) Register(ctx context.Context, req *handler.RegisterReq) (*
 	return s.users.Create(ctx, username, email, string(hash))
 }
 
+// Login 验证用户名和密码，签发访问令牌并保存登录会话。
 func (s *AuthService) Login(ctx context.Context, req *handler.LoginReq) (*handler.AuthResp, error) {
+	// 验证登录请求，从请求体中获取用户名和密码
 	if req == nil || strings.TrimSpace(req.Username) == "" || req.Password == "" {
 		return nil, fmt.Errorf("username and password are required: %w", faults.ErrValidation)
 	}
+
 	user, hash, err := s.users.ByUsername(ctx, strings.TrimSpace(req.Username))
 	if err != nil {
 		if errors.Is(err, faults.ErrNotFound) {
@@ -93,6 +98,7 @@ func (s *AuthService) Login(ctx context.Context, req *handler.LoginReq) (*handle
 	return &handler.AuthResp{Token: token, User: *user}, nil
 }
 
+// Authenticate 校验访问令牌及其当前登录会话，返回已认证的用户身份。
 func (s *AuthService) Authenticate(ctx context.Context, token string) (*auth.Identity, error) {
 	claims, err := s.tokens.Parse(token)
 	if err != nil {

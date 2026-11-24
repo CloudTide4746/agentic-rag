@@ -1,16 +1,6 @@
-/** @format */
-
-import { create } from "zustand";
-import * as chatApi from "../lib/api/chat";
-import { getDecisionLog } from "../lib/api/admin";
-import type {
-  ChatMessage,
-  ChatSession,
-  Citation,
-  DecisionStep,
-  SseEvent,
-  SseEventType,
-} from "../types/legacy";
+import { create } from 'zustand'
+import * as chatApi from '../lib/api/chat'
+import type { Citation, SseEvent, SseEventType } from '../types/legacy'
 
 export interface DecisionCard {
   uid: number;
@@ -27,81 +17,42 @@ export interface DecisionCard {
   elapsedMs: number;
 }
 
-/** 历史决策链回看态（agent_decision_log → 卡片） */
-export interface ViewingLog {
-  id: number;
-  question: string;
-  cards: DecisionCard[];
-  elapsedMs: number;
-  totalRounds: number;
-}
-
-type DoneStats = {
-  elapsed_ms: number;
-  prompt: number;
-  completion: number;
-  rounds: number;
-};
-
+type DoneStats = { elapsed_ms: number; prompt: number; completion: number; rounds: number }
 type ChatState = {
-  sessions: ChatSession[];
-  currentSessionId: number | null;
-  currentSession: ChatSession | null;
-  sessionsLoading: boolean;
-  messages: ChatMessage[];
-  messagesLoading: boolean;
+  streamSessionId: string | null;
+  question: string;
   cards: DecisionCard[];
   pendingCard: DecisionCard | null;
   streaming: boolean;
   streamingText: string;
+  streamCitations: Citation[];
   streamError: string | null;
   doneStats: DoneStats | null;
   activeRound: number;
-  /** 当前进行中的管线环节（1~7，0=空闲；供流程图模式点亮） */
   activeStage: number;
-  /** 历史决策链回看（非 null 时侧栏展示该日志而非实时流） */
-  viewingLog: ViewingLog | null;
-  viewingLoading: boolean;
-  loadSessions: () => Promise<void>;
-  selectSession: (id: number) => Promise<void>;
-  newSession: () => Promise<void>;
-  removeSession: (id: number) => Promise<void>;
-  send: (question: string, images?: string[]) => Promise<void>;
-  regenerate: () => Promise<void>;
+  send: (sessionId: string, question: string) => Promise<void>;
   stopStream: () => void;
   resetDecision: () => void;
-  viewDecisionLog: (logId: number) => Promise<void>;
-  exitViewing: () => void;
-};
-
-let uid = 1;
-
-/** 事件完成后预测下一步的 pending 文案 */
+  dismissDraft: () => void;
+}
+let uid = 1
 const NEXT_HINT: Partial<Record<SseEventType, string>> = {
-  router: "正在改写查询…",
-  rewrite: "正在多路并行检索…",
-  retrieve: "正在融合与评估检索结果…",
-  grade: "正在准备生成…",
-  correct: "正在执行纠正策略…",
-  reflect: "正在整理引用出处…",
-  citation: "正在收尾统计…",
-};
+  router: '正在改写查询…', rewrite: '正在多路并行检索…',
+  retrieve: '正在融合与评估检索结果…', grade: '正在准备生成…',
+  correct: '正在执行纠正策略…', reflect: '正在整理引用出处…', citation: '正在收尾统计…',
+}
+const initialState = {
+  streamSessionId: null, question: '', cards: [], pendingCard: null,
+  streaming: false, streamingText: '', streamCitations: [], streamError: null,
+  doneStats: null, activeRound: 0, activeStage: 0,
+}
 
+// Only the active stream lives here. Sessions and history belong to React Query.
 export const useChatStore = create<ChatState>()((set, get) => {
-  let abortController: AbortController | null = null;
-  /* 单步计时：上一事件 ts（事件卡耗时 = 本事件 ts - lastTs） */
-  let lastTs = 0;
-  /* 生成卡（流式答案）首 token 时刻与卡片 uid */
-  let generateStartTs: number | null = null;
-  let generateCardUid: number | null = null;
-
-  function syncCurrentSession(
-    sessions: ChatSession[],
-    currentSessionId: number | null,
-  ): ChatSession | null {
-    return sessions.find((session) => session.id === currentSessionId) ?? null;
-  }
-
+  let abortController: AbortController | null = null
+  let lastTs = 0
+  let generateStartTs: number | null = null
+  let generateCardUid: number | null = null
   function settlePending(status: "done" | "warn" = "done"): void {
     const pendingCard = get().pendingCard;
     if (!pendingCard) return;
@@ -199,6 +150,7 @@ export const useChatStore = create<ChatState>()((set, get) => {
         } else {
           settlePending();
         }
+        if (event.type === 'citation') set({ streamCitations: event.citations });
         const { type, step, detail, ts, ...payload } = event;
         if (type === "correct")
           set((state) => ({
@@ -264,7 +216,7 @@ export const useChatStore = create<ChatState>()((set, get) => {
               (card) =>
                 card.type === "correct" ||
                 (card.type === "reflect" &&
-                  (card.payload as { result?: string }).result === "fail"),
+                  card.payload.result === "fail"),
             ).length,
           },
           activeStage: 0,
@@ -280,271 +232,42 @@ export const useChatStore = create<ChatState>()((set, get) => {
     }
   }
 
-  /** DecisionStep[]（日志落库）→ 决策卡（含回流轮次推算，与实时流同构） */
-  function stepsToCards(steps: DecisionStep[]): DecisionCard[] {
-    const out: DecisionCard[] = [];
-    let round = 0;
-    for (const step of steps) {
-      if (step.type === "correct")
-        round = Math.max(round, (step.payload.round as number) ?? round);
-      if (step.type === "reflect" && step.payload.result === "fail") round += 1;
-      const warn =
-        (step.type === "grade" && step.payload.verdict !== "pass") ||
-        step.type === "correct" ||
-        (step.type === "reflect" && step.payload.result === "fail") ||
-        step.type === "error";
-      out.push({
-        uid: uid++,
-        step: step.step,
-        type: step.type,
-        status: warn ? "warn" : "done",
-        detail: step.detail,
-        payload: step.payload,
-        ts: 0,
-        round:
-          step.type === "correct" || step.type === "reflect"
-            ? Math.max(0, round)
-            : round,
-        elapsedMs: step.elapsed_ms,
-      });
-    }
-    return out;
-  }
-
-  async function runStream(
-    question: string,
-    skipUserPersist: boolean,
-    images?: string[],
-  ): Promise<void> {
-    const sessionId = get().currentSessionId;
-    if (sessionId === null) return;
-    set({ streaming: true });
-    let finalText = "";
-    let finalCitations: Citation[] | undefined;
-    const onEvent = (event: SseEvent): void => {
-      handleEvent(event);
-      if (event.type === "generate") finalText = get().streamingText;
-      if (event.type === "citation")
-        finalCitations = event.citations.length ? event.citations : undefined;
-    };
-
-    const controller = new AbortController();
-    abortController = controller;
-    let aborted = false;
-    try {
-      await chatApi.ask(
-        sessionId,
-        question,
-        onEvent,
-        controller.signal,
-        skipUserPersist,
-        images,
-      );
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError")
-        aborted = true;
-      else throw error;
-    } finally {
-      if (abortController === controller) abortController = null;
-      set({ streaming: false });
-      if (finalText || get().streamError) {
-        set((state) => ({
-          messages: [
-            ...state.messages,
-            {
-              id: -Date.now() - 1,
-              session_id: sessionId,
-              role: "assistant",
-              content:
-                finalText ||
-                `**链路异常中断**\n\n${get().streamError ?? "未知错误"}`,
-              citations: finalCitations,
-              created_at: new Date().toISOString(),
-            },
-          ],
-        }));
-      }
-      await get().loadSessions();
-      const currentSessionId = get().currentSessionId;
-      if (!aborted && currentSessionId !== null) {
-        try {
-          const messages = await chatApi.getMessages(currentSessionId);
-          if (get().currentSessionId === currentSessionId) set({ messages });
-        } catch {
-          // 保留本地状态
-        }
-      }
-    }
-  }
-
   return {
-    sessions: [],
-    currentSessionId: null,
-    currentSession: null,
-    sessionsLoading: false,
-    messages: [],
-    messagesLoading: false,
-    cards: [],
-    pendingCard: null,
-    streaming: false,
-    streamingText: "",
-    streamError: null,
-    doneStats: null,
-    activeRound: 0,
-    activeStage: 0,
-    viewingLog: null,
-    viewingLoading: false,
-
-    async loadSessions() {
-      set({ sessionsLoading: true });
+    ...initialState,
+    async send(sessionId, question) {
+      if (get().streaming) throw new Error('请等待当前回答结束')
+      get().resetDecision()
+      const controller = new AbortController()
+      abortController = controller
+      set({ streamSessionId: sessionId, question, streaming: true })
       try {
-        const sessions = await chatApi.listSessions();
-        set((state) => ({
-          sessions,
-          currentSession: syncCurrentSession(sessions, state.currentSessionId),
-        }));
+        await chatApi.ask(sessionId, question, event => {
+          if (abortController === controller && !controller.signal.aborted) handleEvent(event)
+        }, controller.signal)
+      } catch (error) {
+        if (abortController !== controller) return
+        settleGenerate(Date.now())
+        settlePending('warn')
+        set({ streamError: controller.signal.aborted
+          ? '已停止接收，服务端可能仍在处理；请刷新历史确认结果。'
+          : error instanceof Error ? error.message : '问答失败' })
+        if (!controller.signal.aborted) throw error
       } finally {
-        set({ sessionsLoading: false });
-      }
-    },
-
-    async selectSession(id) {
-      if (get().streaming) get().stopStream();
-      set({
-        currentSessionId: id,
-        currentSession: syncCurrentSession(get().sessions, id),
-        messagesLoading: true,
-        viewingLog: null,
-      });
-      get().resetDecision();
-      try {
-        const messages = await chatApi.getMessages(id);
-        if (get().currentSessionId === id) set({ messages });
-      } finally {
-        if (get().currentSessionId === id) set({ messagesLoading: false });
-      }
-    },
-
-    async newSession() {
-      const session = await chatApi.createSession();
-      set((state) => ({ sessions: [session, ...state.sessions] }));
-      await get().selectSession(session.id);
-    },
-
-    async removeSession(id) {
-      await chatApi.deleteSession(id);
-      const sessions = get().sessions.filter((session) => session.id !== id);
-      const isCurrent = get().currentSessionId === id;
-      set({
-        sessions,
-        ...(isCurrent
-          ? { currentSessionId: null, currentSession: null, messages: [] }
-          : {}),
-      });
-      if (isCurrent) {
-        get().resetDecision();
-        if (sessions.length > 0) await get().selectSession(sessions[0].id);
-      }
-    },
-
-    async send(question, images) {
-      if (get().streaming) return;
-      if (get().currentSessionId === null) {
-        try {
-          await get().newSession();
-        } catch (error) {
-          set({
-            streamError: `会话创建失败：${error instanceof Error ? error.message : "未知错误"}`,
-          });
-          return;
+        if (abortController === controller) {
+          abortController = null
+          set({ streaming: false, activeStage: 0 })
         }
       }
-      const currentSessionId = get().currentSessionId;
-      if (currentSessionId === null) return;
-      get().exitViewing();
-      get().resetDecision();
-      set((state) => ({
-        streaming: true,
-        messages: [
-          ...state.messages,
-          {
-            id: -Date.now(),
-            session_id: currentSessionId,
-            role: "user",
-            content: question,
-            images: images?.length ? images : undefined,
-            created_at: new Date().toISOString(),
-          },
-        ],
-      }));
-      await runStream(question, false, images);
     },
-
-    async regenerate() {
-      const { currentSessionId, streaming, messages } = get();
-      if (currentSessionId === null || streaming) return;
-      const lastAssistant = [...messages]
-        .reverse()
-        .find((message) => message.role === "assistant");
-      const lastUser = [...messages]
-        .reverse()
-        .find((message) => message.role === "user");
-      if (!lastAssistant || !lastUser) return;
-      const idx = messages
-        .map((message) => message.id)
-        .lastIndexOf(lastAssistant.id);
-      if (idx !== -1)
-        set((state) => ({
-          messages: state.messages.filter((_, index) => index !== idx),
-        }));
-      await chatApi.purgeLastAssistant(currentSessionId);
-      get().exitViewing();
-      get().resetDecision();
-      await runStream(lastUser.content, true, lastUser.images);
-    },
-
-    stopStream() {
-      abortController?.abort();
-    },
-
+    stopStream() { abortController?.abort() },
+    dismissDraft() { set({ question: '', streamingText: '', streamCitations: [] }) },
     resetDecision() {
-      set({
-        cards: [],
-        pendingCard: null,
-        streamingText: "",
-        streamError: null,
-        doneStats: null,
-        activeRound: 0,
-        activeStage: 0,
-      });
-      lastTs = Date.now();
-      generateStartTs = null;
-      generateCardUid = null;
+      abortController?.abort()
+      abortController = null
+      lastTs = Date.now()
+      generateStartTs = null
+      generateCardUid = null
+      set(initialState)
     },
-
-    async viewDecisionLog(logId) {
-      if (get().streaming || get().viewingLoading) return;
-      set({ viewingLoading: true });
-      try {
-        const log = await getDecisionLog(logId);
-        set({
-          viewingLog: {
-            id: log.id,
-            question: log.question,
-            cards: stepsToCards(log.steps),
-            elapsedMs: log.elapsed_ms,
-            totalRounds: log.total_rounds,
-          },
-        });
-      } catch (error) {
-        console.warn("[chat] 决策日志加载失败", error);
-      } finally {
-        set({ viewingLoading: false });
-      }
-    },
-
-    exitViewing() {
-      set({ viewingLog: null });
-    },
-  };
-});
+  }
+})

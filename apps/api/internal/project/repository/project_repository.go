@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 	"teamflow/internal/project"
 	"teamflow/internal/project/service"
 
@@ -26,6 +26,7 @@ type projectRecord struct {
 	StartDate, EndDate   *time.Time
 }
 
+// TableName 返回项目记录对应的数据库表名。
 func (projectRecord) TableName() string { return "projects" }
 
 type memberRecord struct {
@@ -35,11 +36,15 @@ type memberRecord struct {
 	JoinedAt  time.Time `gorm:"autoCreateTime"`
 }
 
+// TableName 返回项目成员记录对应的数据库表名。
 func (memberRecord) TableName() string { return "project_members" }
 
 type ProjectRepository struct{ db *gorm.DB }
 
+// NewProjectRepository 创建使用指定数据库连接的项目仓库。
 func NewProjectRepository(db *gorm.DB) *ProjectRepository { return &ProjectRepository{db: db} }
+
+// Create 在同一事务中创建项目及所有者的项目成员关系。
 func (r *ProjectRepository) Create(ctx context.Context, item project.Project) (*project.Project, error) {
 	teamID, _ := strconv.ParseUint(item.TeamID, 10, 64)
 	ownerID, _ := strconv.ParseUint(item.OwnerID, 10, 64)
@@ -55,6 +60,8 @@ func (r *ProjectRepository) Create(ctx context.Context, item project.Project) (*
 	}
 	return toProject(&row), nil
 }
+
+// ListByTeam 分页查询指定团队下的项目，并返回项目总数。
 func (r *ProjectRepository) ListByTeam(ctx context.Context, teamID uint, page, size int) ([]project.Project, int64, error) {
 	q := r.db.WithContext(ctx).Model(&projectRecord{}).Where("team_id = ?", teamID)
 	var total int64
@@ -71,6 +78,8 @@ func (r *ProjectRepository) ListByTeam(ctx context.Context, teamID uint, page, s
 	}
 	return items, total, nil
 }
+
+// Get 按 ID 查询项目，记录不存在时返回未找到错误。
 func (r *ProjectRepository) Get(ctx context.Context, id uint) (*project.Project, error) {
 	var row projectRecord
 	err := r.db.WithContext(ctx).First(&row, id).Error
@@ -82,11 +91,15 @@ func (r *ProjectRepository) Get(ctx context.Context, id uint) (*project.Project,
 	}
 	return toProject(&row), nil
 }
+
+// IsMember 检查用户是否存在指定项目的成员关系。
 func (r *ProjectRepository) IsMember(ctx context.Context, projectID, userID uint) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&memberRecord{}).Where("project_id = ? AND user_id = ?", projectID, userID).Count(&count).Error
 	return count > 0, err
 }
+
+// Update 更新指定项目的字段并返回最新项目信息。
 func (r *ProjectRepository) Update(ctx context.Context, id uint, fields map[string]any) (*project.Project, error) {
 	res := r.db.WithContext(ctx).Model(&projectRecord{}).Where("id = ?", id).Updates(fields)
 	if res.Error != nil {
@@ -94,6 +107,8 @@ func (r *ProjectRepository) Update(ctx context.Context, id uint, fields map[stri
 	}
 	return r.Get(ctx, id)
 }
+
+// Delete 在同一事务中删除项目成员关系并软删除项目。
 func (r *ProjectRepository) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("project_id = ?", id).Delete(&memberRecord{}).Error; err != nil {
@@ -109,6 +124,8 @@ func (r *ProjectRepository) Delete(ctx context.Context, id uint) error {
 		return nil
 	})
 }
+
+// toProject 将数据库项目记录转换为项目信息，并统一 ID 和 UTC 时间格式。
 func toProject(row *projectRecord) *project.Project {
 	var startDate, endDate *time.Time
 	if row.StartDate != nil {

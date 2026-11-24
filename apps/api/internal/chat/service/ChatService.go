@@ -14,7 +14,7 @@ import (
 	"teamflow/internal/chat"
 	"teamflow/internal/chat/handler"
 	"teamflow/internal/chat/repository"
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 )
 
 const (
@@ -50,7 +50,8 @@ type ChatService struct {
 
 var _ handler.ChatHandler = (*ChatService)(nil)
 
-func NewChatService(sessions SessionRepository, agent AgentClient) *ChatService {		
+// NewChatService 注入平台会话仓库和 Agent 客户端，创建聊天服务。
+func NewChatService(sessions SessionRepository, agent AgentClient) *ChatService {
 	return &ChatService{sessions: sessions, agent: agent}
 }
 
@@ -221,6 +222,7 @@ func isUnknownOutcome(err error) bool {
 	return errors.Is(err, repository.ErrAgentTimeout) || errors.Is(err, repository.ErrAgentUnavailable)
 }
 
+// normalizePage 规范化分页参数，应用默认值并限制页码及每页数量。
 func normalizePage(page, size int) (int, int) {
 	if page < 1 {
 		page = 1

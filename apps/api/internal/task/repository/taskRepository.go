@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 	"teamflow/internal/task"
 
 	"gorm.io/gorm"
@@ -28,11 +28,14 @@ type taskRecord struct {
 	Version              int `gorm:"not null;default:0"`
 }
 
+// TableName 返回任务记录对应的数据库表名。
 func (taskRecord) TableName() string { return "tasks" }
 
 type TaskRepository struct{ db *gorm.DB }
+
 // NewTaskRepository 创建任务仓库
 func NewTaskRepository(db *gorm.DB) *TaskRepository { return &TaskRepository{db: db} }
+
 // Create 创建任务
 func (r *TaskRepository) Create(ctx context.Context, item task.Task) (*task.Task, error) {
 	pid, _ := strconv.ParseUint(item.ProjectID, 10, 64)
@@ -42,7 +45,8 @@ func (r *TaskRepository) Create(ctx context.Context, item task.Task) (*task.Task
 		return nil, fmt.Errorf("create task: %w", err)
 	}
 	return toTask(&row), nil
-}	
+}
+
 // ListByProject 获取项目任务列表
 func (r *TaskRepository) ListByProject(ctx context.Context, projectID uint, page, size int) ([]task.Task, int64, error) {
 	q := r.db.WithContext(ctx).Model(&taskRecord{}).Where("project_id = ?", projectID)
@@ -60,6 +64,7 @@ func (r *TaskRepository) ListByProject(ctx context.Context, projectID uint, page
 	}
 	return items, total, nil
 }
+
 // Get 获取任务
 func (r *TaskRepository) Get(ctx context.Context, id uint) (*task.Task, error) {
 	var row taskRecord
@@ -72,6 +77,7 @@ func (r *TaskRepository) Get(ctx context.Context, id uint) (*task.Task, error) {
 	}
 	return toTask(&row), nil
 }
+
 // Update 更新任务
 func (r *TaskRepository) Update(ctx context.Context, id uint, expectedVersion int, fields map[string]any) (*task.Task, error) {
 	var current taskRecord
@@ -94,6 +100,7 @@ func (r *TaskRepository) Update(ctx context.Context, id uint, expectedVersion in
 	}
 	return r.Get(ctx, id)
 }
+
 // Delete 删除任务
 func (r *TaskRepository) Delete(ctx context.Context, id uint) error {
 	res := r.db.WithContext(ctx).Delete(&taskRecord{}, id)
@@ -105,6 +112,7 @@ func (r *TaskRepository) Delete(ctx context.Context, id uint) error {
 	}
 	return nil
 }
+
 // toTask 转换任务记录为任务
 func toTask(row *taskRecord) *task.Task {
 	var assignee *string

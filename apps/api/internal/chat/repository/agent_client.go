@@ -9,12 +9,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
 	"teamflow/internal/chat"
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 )
 
 // Agent-side error classification. The service maps these to public status
@@ -44,10 +43,11 @@ type AgentClient struct {
 	client  *http.Client
 }
 
-func NewAgentClient() *AgentClient {
+// NewAgentClient 创建配置内部地址、鉴权令牌及连接超时的 Agent HTTP 客户端。
+func NewAgentClient(baseURL, token string) *AgentClient {
 	return &AgentClient{
-		baseURL: strings.TrimRight(strings.TrimSpace(os.Getenv("AGENT_BASE_URL")), "/"),
-		token:   strings.TrimSpace(os.Getenv("INTERNAL_API_TOKEN")),
+		baseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		token:   strings.TrimSpace(token),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 			Transport: &http.Transport{
@@ -63,6 +63,7 @@ func NewAgentClient() *AgentClient {
 // authoritative definition is the domain type in teamflow/internal/chat.
 type AgentRunRequest = chat.RunRequest
 
+// CreateSession 调用 Agent 创建会话，传递幂等键并解析内部会话 ID。
 func (c *AgentClient) CreateSession(ctx context.Context, title, idempotencyKey string) (string, error) {
 	endpoint, err := c.endpoint("sessions")
 	if err != nil {
@@ -98,6 +99,7 @@ func (c *AgentClient) CreateSession(ctx context.Context, title, idempotencyKey s
 	return payload.ID.String(), nil
 }
 
+// GetMessages 读取 Agent 会话历史并转换为平台消息结构。
 func (c *AgentClient) GetMessages(ctx context.Context, agentSessionID string) ([]chat.Message, error) {
 	endpoint, err := c.endpoint("sessions", agentSessionID, "messages")
 	if err != nil {
@@ -200,7 +202,7 @@ func (c *AgentClient) DeleteSession(ctx context.Context, agentSessionID string) 
 		return err
 	}
 	// 创建一个 DELETE 请求,用于删除指定的 Agent 会话
-		request, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("create agent delete request: %w", err)
 	}
@@ -217,6 +219,7 @@ func (c *AgentClient) DeleteSession(ctx context.Context, agentSessionID string) 
 	return nil
 }
 
+// endpoint 检查 Agent 地址和内部令牌配置，并拼接内部聊天接口 URL。
 func (c *AgentClient) endpoint(segments ...string) (string, error) {
 	if c.baseURL == "" {
 		return "", fmt.Errorf("AGENT_BASE_URL is not configured: %w", ErrAgentUnavailable)
@@ -258,6 +261,7 @@ func classify(response *http.Response) error {
 	}
 }
 
+// classifyTransport 区分请求超时、连接未建立及其他传输失败，供调用方判断结果是否明确。
 // classifyTransport separates "never reached the Agent" from "response lost".
 // A connection that was never established is a known failure; anything after
 // the request was written may have been processed upstream, which the caller
@@ -277,11 +281,13 @@ func classifyTransport(err error) error {
 	return fmt.Errorf("agent request failed: %w", ErrAgentUnavailable)
 }
 
+// decodeLimited 在响应读取上限内将 Agent 返回的 JSON 解码到目标对象。
 func decodeLimited(body io.Reader, target any) error {
 	decoder := json.NewDecoder(io.LimitReader(body, maxAgentResponseBytes))
 	return decoder.Decode(target)
 }
 
+// parseAgentTime 解析 RFC3339 或 Agent 日期时间格式，并统一转换为 UTC。
 // parseAgentTime accepts both RFC3339 and the Agent's MySQL datetime format.
 func parseAgentTime(value string) (time.Time, error) {
 	for _, layout := range []string{time.RFC3339Nano, "2006-01-02T15:04:05", "2006-01-02 15:04:05"} {

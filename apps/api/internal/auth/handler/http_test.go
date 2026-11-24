@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"teamflow/internal/auth"
-	"teamflow/internal/httpx"
+	"teamflow/internal/infrastructure/httpx"
 
 	"github.com/gin-gonic/gin"
 )

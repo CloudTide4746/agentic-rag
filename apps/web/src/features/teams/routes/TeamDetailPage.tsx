@@ -1,57 +1,56 @@
-import { Link, useParams } from 'react-router'
-import {
-  EmptyState,
-  PageColumns,
-  PageHeader,
-  PreviewButton,
-  PreviewField,
-  ReadonlyValue,
-  SectionPanel,
-} from '../../platform/index'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { useAuth } from '../../auth'
+import { EmptyState, PageHeader, ReadonlyValue, SectionPanel } from '../../platform'
+import { ErrorMessage, RequestState, parseResourceId } from '../../../shared/ui/Crud'
+import { useDeleteTeam, useTeam, useUpdateTeam } from '../api/data'
+import { TeamForm } from '../ui/TeamForm'
+import type { Team } from '../../../lib/api/list'
+
+function TeamActions({ team, id, userId }: { team: Team; id: number; userId: string }) {
+  const update = useUpdateTeam(userId, id)
+  const remove = useDeleteTeam(userId, id)
+  const [confirm, setConfirm] = useState(false)
+  const navigate = useNavigate()
+  if (team.owner_id !== userId) return <p className="tf-inline-note">仅团队负责人可以编辑或删除团队。</p>
+  return <>
+    <SectionPanel title="编辑团队" className="tf-form-panel">
+      <TeamForm key={team.updated_at} team={team} pending={update.isPending || remove.isPending} error={update.error} success={update.isSuccess} onSave={body => update.mutate(body)} />
+    </SectionPanel>
+    <SectionPanel title="团队设置">
+      <ErrorMessage error={remove.error} />
+      {confirm ? <div role="group" aria-label="确认删除团队">
+        <p>确定删除“{team.name}”吗？删除后将无法通过此团队访问其项目。此操作无法撤销。</p>
+        <button type="button" className="tf-button tf-button-danger" disabled={remove.isPending || update.isPending} onClick={() => remove.mutate(undefined, { onSuccess: () => navigate('/app/teams') })}>{remove.isPending ? '正在删除…' : '确认删除团队'}</button>
+        <button type="button" className="tf-button" disabled={remove.isPending} onClick={() => setConfirm(false)}>取消</button>
+      </div> : <button className="tf-button tf-button-danger" type="button" disabled={update.isPending} onClick={() => setConfirm(true)}>删除团队</button>}
+    </SectionPanel>
+  </>
+}
 
 export default function TeamDetailPage() {
   const { teamId } = useParams()
-  const id = teamId ?? ''
-
+  const id = parseResourceId(teamId)
+  const { user } = useAuth()
+  const query = useTeam(user?.id ?? '', id)
   return <div className="tf-page">
-    <PageHeader
-      eyebrow="团队空间"
-      title="团队详情"
-      description="查看团队信息并进入团队项目。"
-      breadcrumbs={[{ label: '团队', to: '/app/teams' }, { label: '团队概览' }]}
-      action={<Link className="tf-button tf-button-primary" to={`/app/teams/${id}/projects`}>查看项目</Link>}
-    />
-
-    <PageColumns>
-      <div className="tf-page-column-main">
-        <SectionPanel title="团队信息" description="名称、描述、负责人和头像与团队详情接口字段一致。">
+    <PageHeader eyebrow="团队空间" title={query.data?.name ?? '团队详情'} description="查看团队信息并管理团队项目。" breadcrumbs={[{ label: '团队', to: '/app/teams' }, { label: '团队概览' }]} />
+    {id === null ? <p role="alert">团队编号无效。</p> : <>
+      <RequestState pending={query.isPending} error={query.error} retry={() => { void query.refetch() }} />
+      {query.data && <>
+        <SectionPanel title="团队信息">
           <dl className="tf-value-grid">
-            <ReadonlyValue label="团队名称" value="" />
-            <ReadonlyValue label="负责人 ID" value="" />
-            <ReadonlyValue label="团队描述" value="" />
-            <ReadonlyValue label="团队 ID" value={id} />
+            <ReadonlyValue label="团队名称" value={query.data.name} />
+            <ReadonlyValue label="团队描述" value={query.data.description || '无'} />
+            <ReadonlyValue label="负责人 ID" value={query.data.owner_id} />
+            <ReadonlyValue label="团队 ID" value={query.data.id} />
+            <ReadonlyValue label="头像地址" value={query.data.avatar || '未设置'} />
           </dl>
-          <p className="tf-inline-note">团队详细信息接入后显示。</p>
+          <Link className="tf-button tf-button-primary" to={`/app/teams/${id}/projects`}>查看项目</Link>
         </SectionPanel>
-        <SectionPanel title="团队成员" description="当前 TeamFlow API 暂无成员查询与管理接口。">
-          <EmptyState title="成员管理暂未开放" description="当前公开接口仅支持团队信息与团队 CRUD。" />
-        </SectionPanel>
-      </div>
-
-      <div className="tf-page-column-side">
-        <SectionPanel title="编辑团队" description="修改团队名称、描述或头像地址。" className="tf-form-panel">
-          <div className="tf-form-stack">
-            <PreviewField label="团队名称" name="team-name" placeholder="团队名称" maxLength={100} />
-            <PreviewField label="团队描述" name="team-description" placeholder="团队描述" maxLength={500} multiline />
-            <PreviewField label="头像地址" name="team-avatar" placeholder="https://example.com/avatar.png" type="url" maxLength={500} />
-          </div>
-          <div className="tf-form-actions"><PreviewButton>保存修改</PreviewButton></div>
-        </SectionPanel>
-        <SectionPanel title="团队设置">
-          <p className="tf-panel-copy">删除团队操作对应公开 API 的团队删除端点。</p>
-          <div className="tf-form-actions"><PreviewButton destructive>删除团队</PreviewButton></div>
-        </SectionPanel>
-      </div>
-    </PageColumns>
+        <SectionPanel title="团队成员"><EmptyState title="成员管理暂未开放" description="当前公开 API 尚未提供成员查询和管理端点。" /></SectionPanel>
+        {user && <TeamActions team={query.data} id={id} userId={user.id} />}
+      </>}
+    </>}
   </div>
 }

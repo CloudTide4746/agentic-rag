@@ -17,7 +17,7 @@ jwt:
 	if err := os.WriteFile(configPath, content, 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
-
+	
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)

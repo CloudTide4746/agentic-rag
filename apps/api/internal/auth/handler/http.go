@@ -1,30 +1,28 @@
 package handler
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 
-	"teamflow/internal/faults"
-	"teamflow/internal/httpx"
+	"teamflow/internal/infrastructure/httpx"
+	"teamflow/internal/infrastructure/middleware"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // Handler adapts HTTP requests for the auth module onto its use cases.
-// It owns the module's public routes and the authentication middleware that
-// protects every other module.
+// It owns the module's public registration and login routes.
 type Handler struct{ app AuthHandler }
 
+// New 创建依赖认证用例的 HTTP 处理器。
 func New(app AuthHandler) *Handler { return &Handler{app: app} }
 
+// Register 注册用户注册和登录的公开路由。
 func (h *Handler) Register(group *gin.RouterGroup) {
 	group.POST("/auth/register", h.register)
 	group.POST("/auth/login", h.login)
 }
 
+// register 解析注册请求，调用注册用例并返回新用户信息。
 func (h *Handler) register(c *gin.Context) {
 	var req RegisterReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -39,6 +37,7 @@ func (h *Handler) register(c *gin.Context) {
 	httpx.Success(c, http.StatusCreated, user)
 }
 
+// login 解析登录请求，调用登录用例并返回令牌及用户信息。
 func (h *Handler) login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -53,29 +52,8 @@ func (h *Handler) login(c *gin.Context) {
 	httpx.Success(c, http.StatusOK, resp)
 }
 
-// Middleware rejects invalid or unknown credentials before any use case runs
-// and injects the verified actor id for downstream handlers.
+// Middleware 保留现有调用入口，认证实现统一委托给 middleware 包。
+// Deprecated: 组装层应直接使用 middleware.Authenticate。
 func (h *Handler) Middleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		parts := strings.SplitN(c.GetHeader("Authorization"), " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || strings.TrimSpace(parts[1]) == "" {
-			httpx.Fail(c, http.StatusUnauthorized, "UNAUTHENTICATED", "请先登录")
-			return
-		}
-		identity, err := h.app.Authenticate(c.Request.Context(), parts[1])
-		if err != nil {
-			if errors.Is(err, faults.ErrUnauthenticated) {
-				httpx.Fail(c, http.StatusUnauthorized, "UNAUTHENTICATED", "请先登录")
-			} else {
-				requestLogger, _ := c.Get(httpx.LoggerKey)
-				if requestLogger, ok := requestLogger.(*zap.Logger); ok {
-					requestLogger.Error("authentication backend unavailable", zap.Any("request_id", c.GetString(httpx.RequestIDKey)), zap.String("error_type", fmt.Sprintf("%T", err)))
-				}
-				httpx.Fail(c, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "认证服务暂不可用")
-			}
-			return
-		}
-		c.Set(httpx.ActorIDKey, identity.UserID)
-		c.Next()
-	}
+	return middleware.Authenticate(h.app)
 }

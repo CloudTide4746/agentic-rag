@@ -10,7 +10,7 @@ import (
 
 	"teamflow/internal/auth"
 	"teamflow/internal/auth/handler"
-	"teamflow/internal/faults"
+	"teamflow/internal/infrastructure/faults"
 
 	"golang.org/x/crypto/bcrypt"
 )
